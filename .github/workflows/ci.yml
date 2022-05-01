@@ -134,18 +134,18 @@ jobs:
     - run: echo "TAG=nightly" >> $GITHUB_ENV
     - run: 'echo "TAG: $TAG"'
 
+    - name: Package Extension
+      run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+ 
     - name: Publish nightly
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "nightly"
         prerelease: true
-        title: "Development Build"
-        files: "./server/analysis_binaries/*"
-      
-    - name: Package Extension
-      run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
-      
+        title: "nightly"
+        files: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+ 
     - uses: actions/upload-artifact@v2
       with:
         name: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
