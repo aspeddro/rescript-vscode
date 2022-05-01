@@ -144,7 +144,7 @@ jobs:
         automatic_release_tag: "nightly"
         prerelease: true
         title: "nightly"
-        files: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+        files: rescript-vscode.vsix
  
     - uses: actions/upload-artifact@v2
       with:
