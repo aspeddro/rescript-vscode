@@ -134,10 +134,12 @@ jobs:
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
 
-    - name: Rename vsix file
-      run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
+    # - name: Rename vsix file
+    #   run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
  
     - name: Publish nightly
+      if: ${{ github.event_name == 'push' }}
+      run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
