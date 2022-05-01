@@ -18,12 +18,12 @@ jobs:
           - os: macos-latest
             build: eval $(opam env) && cd analysis && make test
             artifact-folder: darwin
-          - os: ubuntu-18.04
-            build: eval $(opam env) && cd analysis && make test
-            artifact-folder: linux
-          - os: windows-latest
-            build: "cd analysis && & $env:CYGWIN_ROOT\\bin\\ocaml-env exec -- make test"
-            artifact-folder: win32
+          # - os: ubuntu-18.04
+          #   build: eval $(opam env) && cd analysis && make test
+          #   artifact-folder: linux
+          # - os: windows-latest
+          #   build: "cd analysis && & $env:CYGWIN_ROOT\\bin\\ocaml-env exec -- make test"
+          #   artifact-folder: win32
 
     runs-on: ${{matrix.os}}
 
