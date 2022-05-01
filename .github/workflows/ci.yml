@@ -157,14 +157,14 @@ jobs:
     if: ${{ github.event_name == 'push' }}
 
     steps:
-      - name: Copy and Rename vsix file
-        run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
+    - name: Copy and Rename vsix file
+      run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
 
-      - name: Release nightly
-      - uses: marvinpinto/action-automatic-releases@latest
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "nightly"
-          prerelease: true
-          title: "nightly"
-          files: rescript-vscode.vsix
+    - name: Release nightly
+    - uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "nightly"
+        prerelease: true
+        title: "nightly"
+        files: rescript-vscode.vsix
