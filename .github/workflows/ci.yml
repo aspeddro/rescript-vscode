@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, test-pre-release ]
   pull_request:
     branches: [ master ]
 
@@ -124,6 +124,16 @@ jobs:
     - name: Store short commit SHA for filename
       id: vars
       run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+    - run: echo "TAG=nightly" >> $GITHUB_ENV
+    - run: 'echo "TAG: $TAG"'
+
+    - name: Publish nightly
+      uses: ./.github/actions/github-release
+      with:
+        files: "./server/analysis_binaries/*"
+        name: ${{ env.TAG }}
+        token: ${{ secrets.GITHUB_TOKEN }}
       
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
