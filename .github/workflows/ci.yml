@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-18.04, windows-latest]
+        os: [ubuntu-18.04]
         # syntax explanation:
         # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-including-additional-values-into-combinations
         include:
@@ -129,11 +129,13 @@ jobs:
     - run: 'echo "TAG: $TAG"'
 
     - name: Publish nightly
-      uses: ./.github/actions/github-release
+      uses: marvinpinto/action-automatic-releases@latest
       with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
         files: "./server/analysis_binaries/*"
-        name: ${{ env.TAG }}
-        token: ${{ secrets.GITHUB_TOKEN }}
       
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
