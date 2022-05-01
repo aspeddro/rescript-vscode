@@ -85,6 +85,7 @@ jobs:
         path: analysis/binary.tar
 
   package:
+    if: ${{ github.event_name == 'push' }}
     needs: test
     runs-on: ubuntu-18.04
   
@@ -134,33 +135,10 @@ jobs:
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
 
-    # - name: Rename vsix file
-    #   run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
- 
-    # - name: Publish nightly
-    #   uses: marvinpinto/action-automatic-releases@latest
-    #   with:
-    #     repo_token: "${{ secrets.GITHUB_TOKEN }}"
-    #     automatic_release_tag: "nightly"
-    #     prerelease: true
-    #     title: "nightly"
-    #     files: rescript-vscode.vsix
- 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
-        path: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
-
-  release:
-    needs: package
-    runs-on: ubuntu-18.04
-    if: ${{ github.event_name == 'push' }}
-
-    steps:
-    - name: Copy and Rename vsix file
+    - name: Rename vsix file
       run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
 
-    - name: Release nightly
+    - name: Publish nightly
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -168,3 +146,26 @@ jobs:
         prerelease: true
         title: "nightly"
         files: rescript-vscode.vsix
+ 
+    - uses: actions/upload-artifact@v2
+      with:
+        name: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+        path: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+
+  # release:
+  #   needs: package
+  #   runs-on: ubuntu-18.04
+  #   if: ${{ github.event_name == 'push' }}
+  #
+  #   steps:
+  #   - name: Copy and Rename vsix file
+  #     run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
+  #
+  #   - name: Release nightly
+  #     uses: marvinpinto/action-automatic-releases@latest
+  #     with:
+  #       repo_token: "${{ secrets.GITHUB_TOKEN }}"
+  #       automatic_release_tag: "nightly"
+  #       prerelease: true
+  #       title: "nightly"
+  #       files: rescript-vscode.vsix
