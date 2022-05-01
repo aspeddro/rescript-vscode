@@ -133,6 +133,9 @@ jobs:
 
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
+
+    - name: Rename vsix file
+      run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
  
     - name: Publish nightly
       uses: marvinpinto/action-automatic-releases@latest
@@ -141,7 +144,7 @@ jobs:
         automatic_release_tag: "nightly"
         prerelease: true
         title: "nightly"
-        files: rescript-vscode.vsix
+        files: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
  
     - uses: actions/upload-artifact@v2
       with:
