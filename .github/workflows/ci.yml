@@ -6,24 +6,30 @@ on:
   pull_request:
     branches: [ master ]
 
+permissions:
+  id-token: "write"
+  contents: "write"
+  packages: "write"
+  pull-requests: "read"
+
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-18.04, windows-latest]
+        os: [ubuntu-18.04]
         # syntax explanation:
         # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-including-additional-values-into-combinations
         include:
-          - os: macos-latest
-            build: eval $(opam env) && cd analysis && make test
-            artifact-folder: darwin
+          # - os: macos-latest
+          #   build: eval $(opam env) && cd analysis && make test
+          #   artifact-folder: darwin
           - os: ubuntu-18.04
             build: eval $(opam env) && cd analysis && make test
             artifact-folder: linux
-          - os: windows-latest
-            build: "cd analysis && & $env:CYGWIN_ROOT\\bin\\ocaml-env exec -- make test"
-            artifact-folder: win32
+          # - os: windows-latest
+          #   build: "cd analysis && & $env:CYGWIN_ROOT\\bin\\ocaml-env exec -- make test"
+          #   artifact-folder: win32
 
     runs-on: ${{matrix.os}}
 
@@ -93,13 +99,13 @@ jobs:
     - run: npm ci
     - run: npm run compile
     
-    - name: Download MacOS binary
-      uses: actions/download-artifact@v3.0.0
-      with:
-        name: macos-latest
-        path: ./server/analysis_binaries
-    - run: tar -xvf binary.tar
-      working-directory: ./server/analysis_binaries
+    # - name: Download MacOS binary
+    #   uses: actions/download-artifact@v3.0.0
+    #   with:
+    #     name: macos-latest
+    #     path: ./server/analysis_binaries
+    # - run: tar -xvf binary.tar
+    #   working-directory: ./server/analysis_binaries
 
     - name: Download Linux binary
       uses: actions/download-artifact@v3.0.0
@@ -109,13 +115,13 @@ jobs:
     - run: tar -xvf binary.tar
       working-directory: ./server/analysis_binaries
 
-    - name: Download Windows binary
-      uses: actions/download-artifact@v3.0.0
-      with:
-        name: windows-latest
-        path: ./server/analysis_binaries
-    - run: tar -xvf binary.tar
-      working-directory: ./server/analysis_binaries
+    # - name: Download Windows binary
+    #   uses: actions/download-artifact@v3.0.0
+    #   with:
+    #     name: windows-latest
+    #     path: ./server/analysis_binaries
+    # - run: tar -xvf binary.tar
+    #   working-directory: ./server/analysis_binaries
 
     - name: Cleanup tar file
       run: rm binary.tar
@@ -124,10 +130,22 @@ jobs:
     - name: Store short commit SHA for filename
       id: vars
       run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-      
+
     - name: Package Extension
       run: npx vsce package -o rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
-      
+
+    - name: Rename vsix file
+      run: cp rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix rescript-vscode.vsix
+
+    - name: Publish nightly
+      uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "nightly"
+        prerelease: true
+        title: "nightly"
+        files: rescript-vscode.vsix
+ 
     - uses: actions/upload-artifact@v2
       with:
         name: rescript-vscode-${{ steps.vars.outputs.sha_short }}.vsix
