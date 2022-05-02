@@ -85,7 +85,6 @@ jobs:
         path: analysis/binary.tar
 
   package:
-    if: ${{ github.event_name == 'push' }}
     needs: test
     runs-on: ubuntu-18.04
   
