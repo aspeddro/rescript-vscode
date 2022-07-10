@@ -111,9 +111,10 @@ let main () =
       ~newName ~debug:false
   | [_; "semanticTokens"; currentFile] ->
     SemanticTokens.semanticTokens ~currentFile
-  | [_; "createInterface"; path; cmiFile] ->
-    Printf.printf "\"%s\""
-      (Json.escape (CreateInterface.command ~path ~cmiFile))
+  | [_; "createInterface"; path] -> Commands.createInterface ~path
+  | [_; "compiledFile"; path] -> Commands.compiledFile ~path
+  | [_; "switchImplIntf"; path] -> Commands.switchImplIntf ~path
+  | [_; "codeLens"; path] -> Commands.codeLens ~path
   | [_; "format"; path] ->
     Printf.printf "\"%s\"" (Json.escape (Commands.format ~path))
   | [_; "test"; path] -> Commands.test ~path

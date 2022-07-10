@@ -11,6 +11,7 @@ import {
   DidCloseTextDocumentNotification,
   DidChangeConfigurationNotification,
   InitializeParams,
+  CodeLensParams,
 } from "vscode-languageserver-protocol";
 import * as utils from "./utils";
 import * as codeActions from "./codeActions";
@@ -820,6 +821,21 @@ function openCompiledFile(msg: p.RequestMessage): p.Message {
   return response;
 }
 
+function codeLens(msg: p.RequestMessage): p.Message {
+  let params = msg.params as CodeLensParams;
+  let filePath = fileURLToPath(params.textDocument.uri);
+
+  let result = utils.runAnalysisAfterSanityCheck(filePath, ["codeLens", filePath])
+  
+  let response: p.ResponseMessage = {
+    jsonrpc: c.jsonrpcVersion,
+    id: msg.id,
+    result
+  };
+
+  return response;
+}
+
 function onMessage(msg: p.Message) {
   if (p.Message.isNotification(msg)) {
     // notification message, aka the client ends it and doesn't want a reply
@@ -891,6 +907,9 @@ function onMessage(msg: p.Message) {
           typeDefinitionProvider: true,
           referencesProvider: true,
           codeActionProvider: true,
+          codeLensProvider: {
+            resolveProvider: true
+          },
           renameProvider: { prepareProvider: true },
           documentSymbolProvider: true,
           completionProvider: { triggerCharacters: [".", ">", "@", "~", '"'] },
@@ -1000,6 +1019,8 @@ function onMessage(msg: p.Message) {
       send(createInterface(msg));
     } else if (msg.method === openCompiledFileRequest.method) {
       send(openCompiledFile(msg));
+    } else if (msg.method === p.CodeLensRequest.method) {
+      send(codeLens(msg))
     } else {
       let response: p.ResponseMessage = {
         jsonrpc: c.jsonrpcVersion,

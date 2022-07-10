@@ -138,3 +138,28 @@ let stringifyDiagnostic d =
   "source": "ReScript"
 }|}
     (stringifyRange d.range) (Json.escape d.message) d.severity
+
+type commandLensArgs = {target: string}
+type command = {title: string; command: string; arguments: commandLensArgs}
+type codeLens = {range: range; command: command}
+
+let stringifyCommandLensArgs c =
+  Printf.sprintf {|{
+  "targetUri": "%s"
+  }|} c.target
+
+let stringifyCommand c =
+  Printf.sprintf {|{
+"title": "%s",
+"command": "%s",
+"arguments": %s
+}|} c.title
+    c.command
+    (stringifyCommandLensArgs c.arguments)
+
+let stringifyCodeLens d =
+  Printf.sprintf {|{
+"range": %s,
+"command": %s
+}|} (stringifyRange d.range)
+    (stringifyCommand d.command)

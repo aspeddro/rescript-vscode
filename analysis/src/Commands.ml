@@ -84,6 +84,30 @@ let codeAction ~path ~pos ~currentFile ~debug =
   Xform.extractCodeActions ~path ~pos ~currentFile ~debug
   |> CodeActions.stringifyCodeActions |> print_endline
 
+let createInterface ~path =
+  match CreateInterface.command ~path with
+  | Some c -> Printf.printf "\"%s\"" (Json.escape c)
+  | None -> print_endline Protocol.null
+
+let compiledFile ~path =
+  print_endline
+    (match CompiledFile.command ~path with
+    | Some f -> f
+    | None -> Protocol.null)
+
+let switchImplIntf ~path =
+  print_endline
+    (match SwitchImplIntf.command ~path with
+    | Some f -> f
+    | None -> Protocol.null)
+
+let codeLens ~path = 
+  print_endline
+    (match CodeLens.command ~path with
+    | Some lens -> lens |> Protocol.array
+    | None -> Protocol.null
+    )
+
 let definition ~path ~pos ~debug =
   let locationOpt =
     match Cmt.fullFromPath ~path with
@@ -332,16 +356,12 @@ let test ~path =
             let currentFile = createCurrentFile () in
             hover ~path ~pos:(line, col) ~currentFile ~debug:true;
             Sys.remove currentFile
-          | "int" ->
+          | "int" -> (
             print_endline ("Create Interface " ^ path);
-            let cmiFile =
-              let open Filename in
-              let ( ++ ) = concat in
-              let name = chop_extension (basename path) ^ ".cmi" in
-              let dir = dirname path in
-              dir ++ parent_dir_name ++ "lib" ++ "bs" ++ "src" ++ name
-            in
-            Printf.printf "%s" (CreateInterface.command ~path ~cmiFile)
+            let cmiTarget = CreateInterface.command ~path in
+            match cmiTarget with
+            | Some cmi -> Printf.printf "%s" cmi
+            | None -> assert false)
           | "ref" ->
             print_endline
               ("References " ^ path ^ " " ^ string_of_int line ^ ":"

@@ -328,9 +328,51 @@ let printSignature ~extractor ~signature =
   processSignature ~indent:"" signature;
   Buffer.contents buf
 
-let command ~path ~cmiFile =
-  match Shared.tryReadCmi cmiFile with
-  | Some cmi_info ->
-    let extractor = SourceFileExtractor.create ~path in
-    printSignature ~extractor ~signature:cmi_info.cmi_sign
-  | None -> ""
+let command ~path =
+  let ( /+ ) = Filename.concat in
+  let cmiFile =
+    match FindFiles.isImplementation path with
+    | false -> None
+    | true -> (
+      let dir = Filename.dirname path in
+      let projDir = FindFiles.findProjectRoot ~dir in
+      match projDir with
+      | None -> None
+      | Some projDir -> (
+        let bsconfig = projDir /+ "bsconfig.json" in
+        match Files.readFile bsconfig with
+        | None -> None
+        | Some text -> (
+          match Json.parse text with
+          | None -> None
+          | Some json ->
+            let namespace =
+              match FindFiles.getNamespace json with
+              | None -> ""
+              | Some ns -> ns
+            in
+
+            let resSplit = Files.split projDir path in
+            let resPartialPath =
+              List.nth resSplit 0 |> Filename.remove_extension
+            in
+
+            let compilerDirPartialPath = "lib" /+ "bs" in
+            let cmiPartialPath =
+              Filename.dirname resPartialPath
+              /+ Filename.basename resPartialPath
+              ^ ".cmi" ^ namespace
+            in
+            let cmiPath =
+              (projDir /+ compilerDirPartialPath) ^ cmiPartialPath
+            in
+            Some cmiPath)))
+  in
+  match cmiFile with
+  | Some cmiFile -> (
+    match Shared.tryReadCmi cmiFile with
+    | Some cmi_info ->
+      let extractor = SourceFileExtractor.create ~path in
+      Some (printSignature ~extractor ~signature:cmi_info.cmi_sign)
+    | None -> None)
+  | None -> None
