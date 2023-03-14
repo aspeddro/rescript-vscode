@@ -1,4 +1,4 @@
-(dirs lib bin reanalyze vendor)
+(dirs src bin reanalyze vendor)
 
 (env
  (dev
