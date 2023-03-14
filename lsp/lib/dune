@@ -1,0 +1,4 @@
+(library
+ (name rescriptlsp)
+ (libraries analysis yojson ppx_deriving_yojson.runtime)
+ (preprocess (pps ppx_deriving_yojson)))
