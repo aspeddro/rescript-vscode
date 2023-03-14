@@ -47,37 +47,37 @@ let on_request r state =
       Rpc.Response.result (Some id) response;
       Running state
   | TextDocumentCompletion
-      (id, { text_document = { uri }; position = { line; character }; _ }) ->
-      let content = Document_Store.get_document state.store uri in
-      let completions =
-        Completion.get uri line character content
-        |> List.map (fun (item : Analysis.Protocol.completionItem) ->
-               Protocol.Completion.Response.
-                 {
-                   label = item.label;
-                   kind = Some item.kind;
-                   tags = Some item.tags;
-                   detail = Some item.detail;
-                   sort_text = item.sortText;
-                   filter_text = item.filterText;
-                   insert_text_format =
-                     (match item.insertTextFormat with
-                     | Some _ -> Some 2
-                     | None -> None);
-                   insert_text = item.insertText;
-                   label_details = None;
-                   documentation =
-                     (match item.documentation with
-                     | Some { kind; value } -> Some { kind; value }
-                     | None -> None);
-                   preselect = None;
-                   insert_text_mode = None;
-                   deprecated = None;
-                   commit_characters = None;
-                 })
-      in
-      let response = Protocol.Completion.Response.to_yojson completions in
-      Rpc.Response.result (Some id) response;
+      (_id, _) ->
+      (* let content = Document_Store.get_document state.store uri in *)
+      (* let completions = *)
+      (*   Completion.get (Protocol.Uri.to_string uri) line character content *)
+      (*   |> List.map (fun (item : Analysis.Protocol.completionItem) -> *)
+      (*          Protocol.Completion.Response. *)
+      (*            { *)
+      (*              label = item.label; *)
+      (*              kind = Some item.kind; *)
+      (*              tags = Some item.tags; *)
+      (*              detail = Some item.detail; *)
+      (*              sort_text = item.sortText; *)
+      (*              filter_text = item.filterText; *)
+      (*              insert_text_format = *)
+      (*                (match item.insertTextFormat with *)
+      (*                | Some _ -> Some 2 *)
+      (*                | None -> None); *)
+      (*              insert_text = item.insertText; *)
+      (*              label_details = None; *)
+      (*              documentation = *)
+      (*                (match item.documentation with *)
+      (*                | Some { kind; value } -> Some { kind; value } *)
+      (*                | None -> None); *)
+      (*              preselect = None; *)
+      (*              insert_text_mode = None; *)
+      (*              deprecated = None; *)
+      (*              commit_characters = None; *)
+      (*            }) *)
+      (* in *)
+      (* let response = Protocol.Completion.Response.to_yojson completions in *)
+      (* Rpc.Response.result (Some id) response; *)
 
       Running state
   | Shutdown (id, ()) when !is_initialized ->

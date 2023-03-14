@@ -1,6 +1,6 @@
 type t = {
   (* Uri.t, content *)
-  db : (string, string) Hashtbl.t; (* add mutable semantic tokens *)
+  db : (Protocol.Uri.t, string) Hashtbl.t; (* add mutable semantic tokens *)
 }
 
 let create () = { db = Hashtbl.create 20 }

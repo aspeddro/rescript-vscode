@@ -25,15 +25,29 @@ module Header = struct
     Buffer.contents b
 end
 
+module Uri = struct
+  (* https://github.com/mirage/ocaml-uri *)
+
+  type t = { path : string } [@@deriving yojson { strict = false }]
+
+  let of_string path = { path }
+  let to_string uri = uri.path
+
+  (* Cut file:// from start of string*)
+  let to_path uri =
+    let scheme = "file://" in
+    Str.global_replace (Str.regexp_string scheme) "" uri
+end
+
 type position = { line : int; character : int }
 [@@deriving yojson { strict = false }]
 
 type message_id = int [@@deriving yojson]
 type version = string [@@deriving yojson]
-type text_document_identifier = { uri : string } [@@deriving yojson]
+type text_document_identifier = { uri : Uri.t } [@@deriving yojson]
 
 type text_document_item = {
-  uri : string;
+  uri : Uri.t;
   language_id : string; [@key "languageId"]
   version : int;
   text : string;
@@ -48,7 +62,7 @@ type text_document_position_params = {
 
 (* https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#versionedTextDocumentIdentifier *)
 
-type versioned_text_document_identifier = { version : int; uri : string }
+type versioned_text_document_identifier = { version : int; uri : Uri.t }
 [@@deriving yojson { strict = false }]
 
 (*TODO: implemete incremental change*)
