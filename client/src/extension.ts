@@ -89,12 +89,13 @@ export function activate(context: ExtensionContext) {
 
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
+    let a = "/home/pedro/Desktop/projects/rescript-vscode/_build/default/lsp/bin/main.exe"
     let serverOptions: ServerOptions = {
-      run: { module: serverModule, transport: TransportKind.ipc },
+      run: { command: a },
       debug: {
-        module: serverModule,
-        transport: TransportKind.ipc,
-        options: debugOptions,
+        command: a
+        // transport: TransportKind.stdio,
+        // options: debugOptions,
       },
     };
 

@@ -1,4 +1,8 @@
 (library
  (name rescriptlsp)
- (libraries analysis yojson ppx_deriving_yojson.runtime)
+ (libraries analysis lsp jsonrpc yojson ppx_deriving_yojson.runtime)
  (preprocess (pps ppx_deriving_yojson)))
+
+(env
+  (dev
+    (flags (:standard -w -26-27))))

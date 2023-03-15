@@ -1,41 +1,8 @@
-type t =
-  | Notification of Protocol.Notification.t
-  | Request of Protocol.Request.t
+(* type t = *)
+(*   | Notification of Protocol.Notification.t *)
+(*   | Request of Protocol.Request.t *)
 
-let read stdin =
-  match input_line stdin with
-  | exception _ -> Error "Failed to read input line"
-  | msg when String.starts_with ~prefix:Protocol.Constants.content_length msg
-    -> (
-      let length =
-        match String.split_on_char ':' msg with
-        | [ _; length ] ->
-            let length =
-              match int_of_string_opt (String.trim length) with
-              | Some s -> Ok s
-              | None -> Error ("Failed to parse content-length: " ^ msg)
-            in
-            length
-        | _ -> Error ("Invalid header, expected found a key, value: " ^ msg)
-      in
-      match length with
-      | Ok length -> (
-          match really_input_string stdin (length + 2) with
-          | exception _ -> Error "Failed to read message"
-          | body -> (
-              let json = Yojson.Safe.from_string body in
-              let keys = Yojson.Safe.Util.keys json in
-              match List.mem "id" keys with
-              | true -> (
-                  match Protocol.Request.of_yojson json with
-                  | Ok request -> Ok (Request request)
-                  | Error e -> Error e)
-              | false -> (
-                  match Protocol.Notification.of_yojson json with
-                  | Ok notification -> Ok (Notification notification)
-                  | Error e -> Error e)))
-      | Error e -> Error e)
-  | other -> Error ("Invalid header: " ^ other)
+
 
 module Response = struct
   type ('o, 'e) t = [ `Ok of 'o | `Error of 'e ]
@@ -93,3 +60,30 @@ module Notification = struct
          (Protocol.WindowShowMessage.{ type_; message }
          |> Protocol.WindowShowMessage.to_yojson))
 end
+
+let read stdin =
+  match input_line stdin with
+  | exception _ -> Error "Failed to read input line"
+  | msg when String.starts_with ~prefix:Protocol.Constants.content_length msg
+    -> (
+      let length =
+        match String.split_on_char ':' msg with
+        | [ _; length ] ->
+            let length =
+              match int_of_string_opt (String.trim length) with
+              | Some s -> Ok s
+              | None -> Error ("Failed to parse content-length: " ^ msg)
+            in
+            length
+        | _ -> Error ("Invalid header, expected found a key, value: " ^ msg)
+      in
+      match length with
+      | Ok length -> (
+          match really_input_string stdin (length + 2) with
+          | exception _ -> Error "Failed to read message"
+          | body ->
+              let json = Yojson.Safe.from_string body in
+              (* Notification.window_show_message (Yojson.Safe.pretty_to_string json); *)
+              Ok (Jsonrpc.Packet.t_of_yojson json))
+      | Error e -> Error e)
+  | other -> Error ("Invalid header: " ^ other)
