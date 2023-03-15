@@ -1,7 +1,4 @@
-type t = {
-  (* Uri.t, content *)
-  db : (Protocol.Uri.t, string) Hashtbl.t; (* add mutable semantic tokens *)
-}
+type t = { db : (Lsp.Uri.t, string) Hashtbl.t }
 
 let create () = { db = Hashtbl.create 20 }
 let open_documet t uri content = Hashtbl.add t.db uri content
