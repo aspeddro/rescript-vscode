@@ -33,10 +33,7 @@ This is needed for the `analysis` folder, which is native code.
 
 ```sh
 # If you haven't created the switch, do it. OPAM(https://opam.ocaml.org)
-opam switch 4.14.0 # can also create local switch with opam switch create . 4.14.0
-
-# Install dev dependencies from OPAM
-opam install . --deps-only
+opam switch create . --deps-only
 
 # For IDE support, install the OCaml language server
 opam install ocaml-lsp-server
