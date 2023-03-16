@@ -146,8 +146,7 @@ let main () =
   | [_; "createInterface"; path; cmiFile] ->
     Printf.printf "\"%s\""
       (Json.escape (CreateInterface.command ~path ~cmiFile))
-  | [_; "format"; path] ->
-    Printf.printf "\"%s\"" (Json.escape (Commands.format ~path))
+  | [_; "format"; path] -> Commands.format ~path
   | [_; "test"; path] ->
     Cfg.supportsSnippets := true;
     Commands.test ~path

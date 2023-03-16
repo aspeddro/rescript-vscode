@@ -8,7 +8,7 @@ let document_syntax ~path =
            let _, endline, endcol =
              Location.get_pos_info (Res_diagnostics.getEndPos diagnostic)
            in
-           Protocol.stringifyDiagnostic
+           Protocol.
              {
                range =
                  {

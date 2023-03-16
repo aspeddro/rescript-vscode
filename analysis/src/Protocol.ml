@@ -74,6 +74,12 @@ type textDocumentEdit = {
   edits: textEdit list;
 }
 
+type documentChanges =
+  | RenameFile of renameFile list
+  | TextDocumentEdit of textDocumentEdit list
+
+type workspaceEdit = {documentChanges: documentChanges}
+
 type codeActionEdit = {documentChanges: textDocumentEdit list}
 type codeActionKind = RefactorRewrite
 
