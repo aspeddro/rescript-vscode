@@ -10,7 +10,8 @@ Thanks for your interest. Below is an informal spec of how the plugin's server c
 │   └── src
 │       └── extension.ts // Language Client entry point
 ├── analysis // Native binary powering hover, autocomplete, etc.
-│   ├── src
+│   ├── bin // Analysis binary
+│   ├── src // Analysis Library
 │   └── rescript-editor-analysis.exe // Dev-time analysis binary
 ├── package.json // The extension manifest
 └── server // Language Server. Usable standalone
