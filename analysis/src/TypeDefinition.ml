@@ -1,4 +1,4 @@
-let get ~path ~pos ~debug =
+let typeDefinition ~path ~pos ~debug =
   match Cmt.loadFullCmtFromPath ~path with
   | None -> None
   | Some full -> (

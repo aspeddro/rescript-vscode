@@ -23,7 +23,7 @@ let codeLens ~path ~debug =
 let hover ~path ~pos ~currentFile ~debug ~supportsMarkdownLinks =
   (match Hover.hover ~path ~pos ~currentFile ~debug ~supportsMarkdownLinks with
   | None -> Protocol.null
-  | Some hover -> hover |> Protocol.stringifyHover)
+  | Some content -> content |> Protocol.stringifyHover)
   |> print_endline
 
 let signatureHelp ~path ~pos ~currentFile ~debug =
@@ -40,14 +40,14 @@ let codeAction ~path ~pos ~currentFile ~debug =
   |> CodeActions.stringifyCodeActions |> print_endline
 
 let definition ~path ~pos ~debug =
-  (match Definition.get ~path ~pos ~debug with
+  (match Definition.definition ~path ~pos ~debug with
   | Some loc -> loc |> Protocol.stringifyLocation
   | None -> Protocol.null)
   |> print_endline
 
 let typeDefinition ~path ~pos ~debug =
   print_endline
-    (match TypeDefinition.get ~path ~pos ~debug with
+    (match TypeDefinition.typeDefinition ~path ~pos ~debug with
     | None -> Protocol.null
     | Some location -> location |> Protocol.stringifyLocation)
 
@@ -88,6 +88,12 @@ let diagnosticSyntax ~path =
 
 let semanticTokens ~currentFile =
   Printf.printf "{\"data\":[%s]}" (SemanticTokens.semanticTokens ~currentFile)
+
+let createInterface ~path ~cmiFile =
+  (match CreateInterface.command ~path ~cmiFile with
+  | Some text -> text
+  | None -> "")
+  |> Json.escape |> Printf.printf "\"%s\""
 
 let test ~path =
   Uri.stripPath := true;
@@ -181,7 +187,10 @@ let test ~path =
               let dir = dirname path in
               dir ++ parent_dir_name ++ "lib" ++ "bs" ++ "src" ++ name
             in
-            Printf.printf "%s" (CreateInterface.command ~path ~cmiFile)
+            Printf.printf "%s"
+              (match CreateInterface.command ~path ~cmiFile with
+              | Some text -> text
+              | None -> "")
           | "ref" ->
             print_endline
               ("References " ^ path ^ " " ^ string_of_int line ^ ":"

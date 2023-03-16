@@ -143,8 +143,7 @@ let main () =
       ~newName ~debug:false
   | [_; "semanticTokens"; currentFile] -> Commands.semanticTokens ~currentFile
   | [_; "createInterface"; path; cmiFile] ->
-    Printf.printf "\"%s\""
-      (Json.escape (CreateInterface.command ~path ~cmiFile))
+    Commands.createInterface ~path ~cmiFile
   | [_; "format"; path] -> Commands.format ~path
   | [_; "test"; path] ->
     Cfg.supportsSnippets := true;

@@ -278,4 +278,6 @@ let hover ~path ~pos ~currentFile ~debug ~supportsMarkdownLinks =
         if skipZero then None else newHover ~supportsMarkdownLinks ~full locItem
       )
   in
-  value
+  match value with
+  | Some value -> Some Protocol.{kind = "markdown"; value}
+  | None -> None
