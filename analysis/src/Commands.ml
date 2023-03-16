@@ -95,6 +95,10 @@ let createInterface ~path ~cmiFile =
   | None -> "")
   |> Json.escape |> Printf.printf "\"%s\""
 
+let documentSymbol ~path =
+  DocumentSymbol.command ~path
+  |> Protocol.stringifyDocumentSymbolItems |> print_endline
+
 let test ~path =
   Uri.stripPath := true;
   match Files.readFile path with
@@ -157,7 +161,7 @@ let test ~path =
             DceCommand.command ()
           | "doc" ->
             print_endline ("DocumentSymbol " ^ path);
-            DocumentSymbol.command ~path
+            documentSymbol ~path
           | "hig" ->
             print_endline ("Highlight " ^ path);
             SemanticTokens.command ~debug:true

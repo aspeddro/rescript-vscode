@@ -103,7 +103,7 @@ let main () =
     Commands.typeDefinition ~path
       ~pos:(int_of_string line, int_of_string col)
       ~debug:false
-  | [_; "documentSymbol"; path] -> DocumentSymbol.command ~path
+  | [_; "documentSymbol"; path] -> Commands.documentSymbol ~path
   | [_; "hover"; path; line; col; currentFile; supportsMarkdownLinks] ->
     Commands.hover ~path
       ~pos:(int_of_string line, int_of_string col)
