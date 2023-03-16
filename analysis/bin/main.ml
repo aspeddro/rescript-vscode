@@ -141,8 +141,7 @@ let main () =
     Commands.rename ~path
       ~pos:(int_of_string line, int_of_string col)
       ~newName ~debug:false
-  | [_; "semanticTokens"; currentFile] ->
-    SemanticTokens.semanticTokens ~currentFile
+  | [_; "semanticTokens"; currentFile] -> Commands.semanticTokens ~currentFile
   | [_; "createInterface"; path; cmiFile] ->
     Printf.printf "\"%s\""
       (Json.escape (CreateInterface.command ~path ~cmiFile))

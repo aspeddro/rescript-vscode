@@ -86,6 +86,9 @@ let diagnosticSyntax ~path =
   |> List.map Protocol.stringifyDiagnostic
   |> Protocol.array |> print_endline
 
+let semanticTokens ~currentFile =
+  Printf.printf "{\"data\":[%s]}" (SemanticTokens.semanticTokens ~currentFile)
+
 let test ~path =
   Uri.stripPath := true;
   match Files.readFile path with
