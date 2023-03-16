@@ -145,8 +145,7 @@ let stringifyCompletionItem c =
     ]
 
 let stringifyHover {kind; value} =
-  Printf.sprintf {|{"contents": %s}|}
-    (stringifyMarkupContent {kind; value})
+  Printf.sprintf {|{"contents": %s}|} (stringifyMarkupContent {kind; value})
 
 let stringifyLocation (h : location) =
   Printf.sprintf {|{"uri": "%s", "range": %s}|} (Json.escape h.uri)
