@@ -1,4 +1,5 @@
 (executable
+ (public_name analysis)
  (modes byte exe)
  ; The main module that will become the binary.
  (name main)
