@@ -1,5 +1,5 @@
 (library
- (name rescript_lsp_server)
+ (name rescript_language_server)
  (libraries analysis lsp jsonrpc yojson))
 
 (env

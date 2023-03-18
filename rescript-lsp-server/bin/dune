@@ -2,4 +2,4 @@
  (name main)
  (public_name rescriptlsp)
  (package rescript-language-server)
- (libraries rescript_lsp_server))
+ (libraries rescript_language_server))
