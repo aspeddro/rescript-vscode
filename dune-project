@@ -13,6 +13,7 @@
 (package
  (name analysis)
  (synopsis "ReScript Analysis")
+ (allow_empty)
  (depends
   (ocaml
    (>= 4.10))
@@ -23,3 +24,12 @@
   (reanalyze
    (= 2.23.0))
   dune))
+
+(package
+ (name rescript-language-server)
+ (synopsis "LSP Server for ReScript")
+ (allow_empty)
+ (depends
+  (ocaml (>= 4.10))
+  lsp
+  yosjon))

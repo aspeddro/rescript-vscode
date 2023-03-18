@@ -1,0 +1,7 @@
+(library
+ (name rescript_lsp_server)
+ (libraries analysis lsp jsonrpc yojson))
+
+(env
+  (dev
+    (flags (:standard -w -26-27-33))))

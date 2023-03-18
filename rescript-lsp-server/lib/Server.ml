@@ -1,7 +1,6 @@
 open Lsp.Types
 
-type status = Running of State.t | Exit of int
-
+(*TODO: remove this variables*)
 let is_initialized = ref false
 let is_shutting_down = ref false
 
@@ -18,7 +17,7 @@ let server_capabilities =
   in
   InitializeResult.create ~capabilities ()
 
-let not_supported ~message =
+let not_supported_req ~message =
   Jsonrpc.Response.Error.raise
     (Jsonrpc.Response.Error.make ~code:InternalError ~message ())
 
@@ -33,7 +32,7 @@ let on_request req state =
           let response = Jsonrpc.Response.ok req.id capabilites in
           Io.write (Jsonrpc.Packet.Response response);
 
-          Running state
+          State.initialize state params
       | E (TextDocumentHover params) ->
           let markupContent =
             MarkupContent.
@@ -49,34 +48,33 @@ let on_request req state =
 
           Io.write
             (Jsonrpc.Packet.Response (Jsonrpc.Response.ok req.id response));
-          Running state
+          state
       | E Shutdown when !is_initialized ->
           is_shutting_down := true;
-          Running state
-      | E UnknownRequest params ->
-          Running state
-      | _ -> Running state)
-  | Error err -> Running state
+          exit 0
+      | E (UnknownRequest params) -> state
+      | _ -> state)
+  | Error message -> state
 
-let on_notification r state =
-  match Lsp.Client_notification.of_jsonrpc r with
+let on_notification n state =
+  match Lsp.Client_notification.of_jsonrpc n with
   | Ok notication -> (
       match notication with
       | Initialized ->
           is_initialized := true;
-          Running state
-      | TextDocumentDidOpen params -> Running state
-      | TextDocumentDidClose params -> Running state
-      | TextDocumentDidChange params -> Running state
-      | Exit -> if !is_shutting_down then Exit 0 else Exit 1
+          state
+      | TextDocumentDidOpen params -> state
+      | TextDocumentDidClose params -> state
+      | TextDocumentDidChange params -> state
+      | Exit -> exit 0
       | _ ->
           let params = Jsonrpc.Structured.t_of_yojson (`List [ `Bool true ]) in
           Io.write
             (Jsonrpc.Packet.Notification
                (Jsonrpc.Notification.create ~method_:"window/showMessage"
                   ?params:(Some params) ()));
-          Running state)
-  | Error err -> Exit 1
+          state)
+  | Error err -> state
 
 let run () =
   set_binary_mode_in stdin true;
@@ -86,16 +84,12 @@ let run () =
     match Io.read stdin with
     | Ok kind -> (
         match kind with
-        | Notification notification -> (
-            match on_notification notification state with
-            | Exit code -> exit code
-            | Running state -> loop state)
-        | Request request -> (
-            match on_request request state with
-            | Exit code -> exit code
-            | Running state -> loop state)
+        | Notification notification -> loop (on_notification notification state)
+        | Request request -> loop (on_request request state)
         | _ -> loop state)
-    | Error msg -> loop state
+    | Error msg ->
+        print_endline msg;
+        exit 1
   in
 
   let store = Document_Store.create () in
