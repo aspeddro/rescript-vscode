@@ -29,5 +29,4 @@
  (synopsis "LSP Server for ReScript")
  (depends
   (ocaml (>= 4.10))
-  lsp
-  yosjon))
+  lsp))

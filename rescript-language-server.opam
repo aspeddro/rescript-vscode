@@ -9,7 +9,6 @@ depends: [
   "dune" {>= "3.6"}
   "ocaml" {>= "4.10"}
   "lsp"
-  "yosjon"
   "odoc" {with-doc}
 ]
 build: [

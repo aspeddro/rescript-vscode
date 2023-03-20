@@ -1,0 +1,449 @@
+#Start(1679216084085)
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/await.res:4:9-17
+
+  2 │ let foo = async () => {
+  3 │   let _ = ()
+  4 │   () => await a()
+  5 │ }
+  6 │ 
+
+  Await on expression not in an async context
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/type1.res:1:9-10
+
+  1 │ let x = 2. + 2
+  2 │ 
+
+  This has type: float
+  Somewhere wanted: int
+  
+  You can convert float to int with Belt.Float.toInt.
+  If this is a literal, try a number without a trailing dot (e.g. 20).
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/modules1.res:1:9-13
+
+  1 │ let b = Foo.b
+  2 │ 
+
+  The module or file Foo can't be found.
+  - If it's a third-party dependency:
+    - Did you list it in bsconfig.json?
+    - Did you run `rescript build` instead of `rescript build -with-deps`
+      (latter builds third-parties)?
+  - Did you include the file's directory in bsconfig.json?
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/modules2.res:1:9-14
+
+  1 │ let b = List.b
+  2 │ 
+
+  The value b can't be found in List
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/modules3.res:11:11-21
+
+   9 │ }
+  10 │ 
+  11 │ let asd = A.B.C.D.aaa
+  12 │ 
+  13 │ /* there's another, unrelated test, that we're just gonna paste here. W
+     │ e won't
+
+  The value aaa can't be found in A.B.C.D
+  
+  Hint: Did you mean aaaa?
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings1.res:3:3-7
+
+  1 │ let x = (a, b) => a + b
+  2 │ let z = () => {
+  3 │   x(10)
+  4 │   10
+  5 │ }
+
+  This has type: int => int
+  Somewhere wanted: unit
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings2.res:2:3-4
+
+  1 │ let z = () => {
+  2 │   10
+  3 │   10
+  4 │ }
+
+  This has type: int
+  Somewhere wanted: unit
+
+
+  Warning number 107
+  /home/pedro/Desktop/learning-rescript/src/fixtures/intoverflow.res:2:15-27
+
+  1 │ let v1: int = 2_147_483_647 // max int
+  2 │ let v2: int = 2_147_483_648 // overflow
+  3 │ let v3: int = 2_147_483_649 // overflow
+  4 │ let v4: int = -2_147_483_647
+
+  Integer literal exceeds the range of representable integers of type int
+
+
+  Warning number 107
+  /home/pedro/Desktop/learning-rescript/src/fixtures/intoverflow.res:3:15-27
+
+  1 │ let v1: int = 2_147_483_647 // max int
+  2 │ let v2: int = 2_147_483_648 // overflow
+  3 │ let v3: int = 2_147_483_649 // overflow
+  4 │ let v4: int = -2_147_483_647
+  5 │ let v5: int = -2_147_483_648 // min int
+
+  Integer literal exceeds the range of representable integers of type int
+
+
+  Warning number 107
+  /home/pedro/Desktop/learning-rescript/src/fixtures/intoverflow.res:6:16-28
+
+  4 │ let v4: int = -2_147_483_647
+  5 │ let v5: int = -2_147_483_648 // min int
+  6 │ let v6: int = -2_147_483_649 // underflow
+  7 │ 
+  8 │ // hex
+
+  Integer literal exceeds the range of representable integers of type int
+
+
+  Warning number 107
+  /home/pedro/Desktop/learning-rescript/src/fixtures/intoverflow.res:11:14-26
+
+   9 │ let v7: int = 0xFFFF_FFFF // -1
+  10 │ let v8: int = -0xFFFF_FFFF // 1
+  11 │ let v9:int = 0x1_0000_0000 // overflow
+  12 │ let v10:int = -0x1_0000_0000 // underflow
+  13 │ 
+
+  Integer literal exceeds the range of representable integers of type int
+
+
+  Warning number 107
+  /home/pedro/Desktop/learning-rescript/src/fixtures/intoverflow.res:12:16-28
+
+  10 │ let v8: int = -0xFFFF_FFFF // 1
+  11 │ let v9:int = 0x1_0000_0000 // overflow
+  12 │ let v10:int = -0x1_0000_0000 // underflow
+  13 │ 
+
+  Integer literal exceeds the range of representable integers of type int
+
+
+  Warning number 3
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings3.res:1:9-23
+
+  1 │ let _ = string_of_float(34.)
+  2 │ let _ = string_of_float(34.)
+  3 │ let _ = string_of_float(34.)
+
+  deprecated: Pervasives.string_of_float
+  Please use Js.Float.toString instead, string_of_float generates unparseable floats
+
+
+  Warning number 3
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings3.res:2:9-23
+
+  1 │ let _ = string_of_float(34.)
+  2 │ let _ = string_of_float(34.)
+  3 │ let _ = string_of_float(34.)
+  4 │ 
+
+  deprecated: Pervasives.string_of_float
+  Please use Js.Float.toString instead, string_of_float generates unparseable floats
+
+
+  Warning number 3
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings3.res:3:9-23
+
+  1 │ let _ = string_of_float(34.)
+  2 │ let _ = string_of_float(34.)
+  3 │ let _ = string_of_float(34.)
+  4 │ 
+
+  deprecated: Pervasives.string_of_float
+  Please use Js.Float.toString instead, string_of_float generates unparseable floats
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings4.res:11:1-13:1
+
+   9 │ @val external x: myType = "myVariable"
+  10 │ 
+  11 │ switch x {
+  12 │   | #first => Js.log("first")
+  13 │ }
+  14 │ 
+
+  You forgot to handle a possible case here, for example: 
+  #second(_) | #fourth | #third
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:11:1-13:1
+
+   9 │ @val external y: someRecord = "otherVariable"
+  10 │ 
+  11 │ switch y {
+  12 │ | {otherValue: false} => Js.log("first")
+  13 │ }
+  14 │ 
+  15 │ switch y {
+
+  You forgot to handle a possible case here, for example: 
+  {otherValue: true, _}
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:15:1-17:1
+
+  13 │ }
+  14 │ 
+  15 │ switch y {
+  16 │ | {typ: WithPayload(true)} => Js.log("first")
+  17 │ }
+  18 │ 
+  19 │ let arr = [1]
+
+  You forgot to handle a possible case here, for example: 
+  {typ: WithPayload(false), _}
+| {typ: Variant | One | Two | Three | Four | Five | Six | Seven(_), _}
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:21:1-23:1
+
+  19 │ let arr = [1]
+  20 │ 
+  21 │ switch arr {
+  22 │ | [] => Js.log("")
+  23 │ }
+  24 │ 
+  25 │ switch arr {
+
+  You forgot to handle a possible case here, for example: 
+  [_]
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:25:1-27:1
+
+  23 │ }
+  24 │ 
+  25 │ switch arr {
+  26 │ | [one] => Js.log(one)
+  27 │ }
+  28 │ 
+  29 │ switch arr {
+
+  You forgot to handle a possible case here, for example: 
+  []
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:29:1-31:1
+
+  27 │ }
+  28 │ 
+  29 │ switch arr {
+  30 │ | [1, 2] => ()
+  31 │ }
+  32 │ 
+  33 │ let lst = list{}
+
+  You forgot to handle a possible case here, for example: 
+  [1, 0] | [0, _] | []
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:35:1-37:1
+
+  33 │ let lst = list{}
+  34 │ 
+  35 │ switch lst {
+  36 │ | list{} => ()
+  37 │ }
+  38 │ 
+  39 │ switch lst {
+
+  You forgot to handle a possible case here, for example: 
+  list{_, ..._}
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:39:1-41:1
+
+  37 │ }
+  38 │ 
+  39 │ switch lst {
+  40 │ | list{1, 2} => ()
+  41 │ }
+  42 │ 
+  43 │ switch lst {
+
+  You forgot to handle a possible case here, for example: 
+  list{1, 2, _, ..._} | list{1, 0, ..._} | list{1} | list{0, ..._} | list{}
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:43:1-45:1
+
+  41 │ }
+  42 │ 
+  43 │ switch lst {
+  44 │ | list{1} => ()
+  45 │ }
+  46 │ 
+  47 │ switch "abc" {
+
+  You forgot to handle a possible case here, for example: 
+  list{1, _, ..._} | list{0, ..._} | list{}
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:47:1-49:1
+
+  45 │ }
+  46 │ 
+  47 │ switch "abc" {
+  48 │ | "" => ()
+  49 │ }
+  50 │ 
+  51 │ switch 0 {
+
+  You forgot to handle a possible case here, for example: 
+  "*"
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:51:1-53:1
+
+  49 │ }
+  50 │ 
+  51 │ switch 0 {
+  52 │ | 1 => ()
+  53 │ }
+  54 │ 
+  55 │ let tuple = (1, true)
+
+  You forgot to handle a possible case here, for example: 
+  0
+
+
+  Warning number 8
+  /home/pedro/Desktop/learning-rescript/src/fixtures/warnings5.res:57:1-59:1
+
+  55 │ let tuple = (1, true)
+  56 │ 
+  57 │ switch tuple {
+  58 │ | (_, false) => ()
+  59 │ }
+  60 │ 
+
+  You forgot to handle a possible case here, for example: 
+  (_, true)
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/collections.res:2:12-18
+
+  1 │ /* wrong type in a list */
+  2 │ list{1, 2, "Hello"}->ignore
+  3 │ 
+
+  This has type: string
+  Somewhere wanted: int
+  
+  You can convert string to int with Belt.Int.fromString.
+
+
+  Warning number 109 (configured as error) 
+  /home/pedro/Desktop/learning-rescript/src/fixtures/partial_app.res:5:1-7
+
+  3 │ }
+  4 │ 
+  5 │ f(1, 2)
+  6 │ 
+
+  Toplevel expression is expected to have unit type.
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/primitives2.res:2:1
+
+  1 │ /* got int, wanted string */
+  2 │ 2 ++ " things"
+  3 │ 
+
+  This has type: int
+  Somewhere wanted: string
+  
+  You can convert int to string with Belt.Int.toString.
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/primitives1.res:2:1-2
+
+  1 │ /* got float, wanted int */
+  2 │ 2. + 2
+  3 │ 
+
+  This has type: float
+  Somewhere wanted: int
+  
+  You can convert float to int with Belt.Float.toInt.
+  If this is a literal, try a number without a trailing dot (e.g. 20).
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/primitives3.res:3:1
+
+  1 │ /* Too many arguments */
+  2 │ let x = a => a + 2
+  3 │ x(2, 4)
+  4 │ 
+
+  This function has type int => int
+  It only accepts 1 argument; here, it's called with more.
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/primitives4.res:3:1
+
+  1 │ /* Not a function */
+  2 │ let x = 10
+  3 │ x(10)
+  4 │ 
+
+  This expression has type int
+  It is not a function.
+
+
+  We've found a bug for you!
+  /home/pedro/Desktop/learning-rescript/src/fixtures/primitives5.res:3:1-5
+
+  1 │ /* Not enough arguments */
+  2 │ type x = X(int, float)
+  3 │ X(10)->ignore
+  4 │ 
+
+  This variant constructor, X, expects 2 arguments; here, we've only found 1.
+
+FAILED: subcommands failed.
+#Done(1679216084229)

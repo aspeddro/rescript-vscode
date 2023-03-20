@@ -1,6 +1,6 @@
 (library
  (name rescript_language_server)
- (libraries analysis lsp jsonrpc yojson))
+ (libraries analysis lsp jsonrpc))
 
 (env
   (dev
