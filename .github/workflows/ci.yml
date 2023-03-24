@@ -49,13 +49,16 @@ jobs:
       with:
         ocaml-compiler: 4.14.x
 
+    - name: Install opam packages
+      run: opam install .
+
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
         node-version: 16
 
     - run: npm ci
-    - run: opam install dune cppo
+    # - run: opam install dune cppo
     - run: npm run compile
 
     # These 2 runs (or just the second?) are for when you have opam dependencies. We don't.
