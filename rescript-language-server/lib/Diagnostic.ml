@@ -17,14 +17,8 @@ let from_log t =
     let diagnostics_by_uri =
       result
       |> List.fold_left
-           (fun acc (message, ({range; uri} : Lsp.Types.Location.t), severity) ->
-             let start =
-               Lsp.Types.Position.create
-                 ~character:(range.start.character - 1)
-                 ~line:(range.start.line - 1)
-             in
-             let end_ = Lsp.Types.Position.create ~character:(range.end_.character -1) ~line:(range.end_.line -1) in
-             let range = Lsp.Types.Range.create ~start ~end_ in
+           (fun acc
+                (Compiler.ParseLog.{message; location = {uri; range}}, severity) ->
              let diagnostic =
                Lsp.Types.Diagnostic.create ~message ~range ~severity
                  ~source:"ReScript" ()
@@ -32,7 +26,8 @@ let from_log t =
 
              match UriMap.find_opt uri acc with
              | None -> UriMap.add uri [diagnostic] acc
-             | Some d -> UriMap.add uri (diagnostic :: d) acc)
+             | Some previous_diagnostics ->
+               UriMap.add uri (diagnostic :: previous_diagnostics) acc)
            UriMap.empty
     in
     let r =
@@ -77,9 +72,9 @@ let get_status t =
     let r =
       Hashtbl.fold
         (fun a b acc ->
-          let list =
-            b |> List.map (fun x -> Lsp.Types.Diagnostic.yojson_of_t x)
-          in
+          (* let list = *)
+          (*   b |> List.map (fun x -> Lsp.Types.Diagnostic.yojson_of_t x) *)
+          (* in *)
           let a =
             `Assoc
               [

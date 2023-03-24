@@ -3,13 +3,18 @@ module ParseLog = struct
 
   type kind =
     | Syntax of diagnostic
-    | Warning of (int * diagnostic)
+    | Warning of {number: int; diagnostic: diagnostic}
     | Bug of diagnostic
     | WarningGenType
     | Configured
     | FatalError
     | Failed of string (* Dependency cycle *)
     | Unknow
+
+  module Constants = struct
+    let start = "#Start("
+    let done_ = "#Done("
+  end
 
   let errors_msg_header =
     [
@@ -58,10 +63,13 @@ module ParseLog = struct
         | _ -> failwith ("Failed to parse: " ^ str)
       in
       let start =
-        Position.create ~character:char_start ~line:(int_of_string line_start)
+        Position.create ~character:(char_start - 1)
+          ~line:(int_of_string line_start - 1)
       in
       let end_ =
-        Position.create ~character:(int_of_string char_end) ~line:line_end
+        Position.create
+          ~character:(int_of_string char_end - 1)
+          ~line:(line_end - 1)
       in
       Range.create ~start ~end_
     (* Single line and point *)
@@ -70,16 +78,19 @@ module ParseLog = struct
       (* Point *)
       | [_] ->
         let position =
-          Position.create ~character:(int_of_string last_part)
-            ~line:(int_of_string line)
+          Position.create
+            ~character:(int_of_string last_part - 1)
+            ~line:(int_of_string line - 1)
         in
         Range.create ~start:position ~end_:position
       | [char_start; char_end] ->
-        let line = int_of_string line in
+        let line = int_of_string line - 1 in
         let start =
-          Position.create ~character:(int_of_string char_start) ~line
+          Position.create ~character:(int_of_string char_start - 1) ~line
         in
-        let end_ = Position.create ~character:(int_of_string char_end) ~line in
+        let end_ =
+          Position.create ~character:(int_of_string char_end - 1) ~line
+        in
         Range.create ~start ~end_
       | _ -> failwith ("Failed to parse: " ^ str))
     | _ -> failwith ("Failed to parse: " ^ str)
@@ -126,7 +137,7 @@ module ParseLog = struct
       match lines with
       | [] -> ([], lines)
       | hd :: tl ->
-        if is_error_msg hd || String.starts_with ~prefix:"#Done(" hd then
+        if is_error_msg hd || String.starts_with ~prefix:Constants.done_ hd then
           (msg, lines)
         else loop (String.trim hd :: msg) tl
     in
@@ -147,7 +158,7 @@ module ParseLog = struct
         | [] -> (None, tl)
         | message :: tl ->
           let message, tl = parse_message (message :: tl) in
-          (Some (message, location), tl))
+          (Some {message = message |> String.concat "\n"; location}, tl))
     in
 
     match lines with
@@ -155,47 +166,41 @@ module ParseLog = struct
     | header_error_msg :: tl -> (
       match kind_error header_error_msg with
       | (`Syntax | `Bug) as kind -> (
-        let loc, tl = process_body tl in
-        match loc with
+        let diagnostic, tl = process_body tl in
+        match diagnostic with
         | None -> (None, tl)
-        | Some (message, location) -> (
-          let message = String.concat "\n" message in
+        | Some diagnostic -> (
           match kind with
-          | `Syntax -> (Some (Syntax {message; location}), tl)
-          | `Bug -> (Some (Bug {message; location}), tl)))
+          | `Syntax -> (Some (Syntax diagnostic), tl)
+          | `Bug -> (Some (Bug diagnostic), tl)))
       | `Warning -> (
-        let warning = "Warning number" in
         let warning_msg = String.length "Warning number " in
-        let configured_as_error = "(configured as error)" in
+        let configured_as_error_msg = "(configured as error)" in
         let msg = String.trim header_error_msg in
-        let warning_number =
-          String.sub msg warning_msg (String.length msg - warning_msg)
-        in
         let warning_as_error, number =
-          match String.ends_with ~suffix:configured_as_error msg with
+          match String.ends_with ~suffix:configured_as_error_msg msg with
           | true ->
             let number =
               String.sub msg warning_msg (String.length msg - warning_msg)
             in
             let number =
               String.sub number 0
-                (String.length number - String.length configured_as_error)
+                (String.length number - String.length configured_as_error_msg)
             in
-            (true, String.trim number)
+            (true, number)
           | false ->
             let number =
               String.sub msg warning_msg (String.length msg - warning_msg)
             in
-            (false, String.trim number)
+            (false, number)
         in
-        let warning_number = number |> int_of_string in
+        let warning_number = number |> String.trim |> int_of_string in
         let loc, tl = process_body tl in
         match loc with
         | None -> (None, tl)
-        | Some (message, location) ->
-          let message = String.concat "\n" message in
-          if warning_as_error then (Some (Bug {message; location}), tl)
-          else (Some (Warning (warning_number, {message; location})), tl))
+        | Some diagnostic ->
+          if warning_as_error then (Some (Bug diagnostic), tl)
+          else (Some (Warning {number = warning_number; diagnostic}), tl))
       | `Failed -> (
         (* TODO: better error message for Dependency cycle *)
         let failed = String.length "FAILED: " in
@@ -217,10 +222,10 @@ module ParseLog = struct
       match lines with
       | [] -> diagnostics
       | hd :: tl -> (
-        match String.starts_with ~prefix:"#Start(" hd with
+        match String.starts_with ~prefix:Constants.start hd with
         | true -> loop tl diagnostics
         | false -> (
-          match String.starts_with ~prefix:"#Done(" hd with
+          match String.starts_with ~prefix:Constants.done_ hd with
           | true -> diagnostics
           | false ->
             let diagnostic, tl = parse_errors (hd :: tl) in
@@ -238,12 +243,15 @@ module ParseLog = struct
     diagnostics
     |> List.filter_map (fun diagnostic ->
            match diagnostic with
-           | Bug {message; location} ->
-             Some (message, location, Lsp.Types.DiagnosticSeverity.Error)
-           | Warning (number, {message; location}) ->
+           | Bug diagnostic ->
+             Some (diagnostic, Lsp.Types.DiagnosticSeverity.Error)
+           | Warning {number; diagnostic} ->
              Some
-               ( Printf.sprintf "%s Warning %s" message (string_of_int number),
-                 location,
+               ( {
+                   diagnostic with
+                   message =
+                     diagnostic.message ^ " Warning " ^ string_of_int number;
+                 },
                  Lsp.Types.DiagnosticSeverity.Warning )
            | _ -> None)
 
@@ -257,7 +265,7 @@ module ParseLog = struct
         ("location: "
         ^ (Lsp.Types.Location.yojson_of_t location |> Lsp.Import.Json.to_string)
         )
-    | Warning (number, {message; location}) ->
+    | Warning {number; diagnostic = {message; location}} ->
       print_endline ("message: " ^ message);
       print_endline ("number: " ^ string_of_int number);
       print_endline
