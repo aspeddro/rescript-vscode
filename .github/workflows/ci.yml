@@ -49,9 +49,6 @@ jobs:
       with:
         ocaml-compiler: 4.14.x
 
-    - name: Install opam packages
-      run: opam install .
-
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
