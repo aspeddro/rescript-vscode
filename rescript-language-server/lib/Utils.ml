@@ -21,3 +21,10 @@ let window_notification message =
     (Jsonrpc.Packet.Notification
        (Jsonrpc.Notification.create ~method_:"window/showMessage"
           ?params:(Some params) ()))
+
+let rec find_project_root ~dir =
+  let bsconfigFile = Filename.concat dir "bsconfig.json" in
+  if Sys.file_exists bsconfigFile then Some dir
+  else
+    let parent = dir |> Filename.dirname in
+    if parent = dir then None else find_project_root ~dir:parent

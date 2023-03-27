@@ -1,277 +1,121 @@
-module ParseLog = struct
-  type diagnostic = {message: string; location: Lsp.Types.Location.t}
+let get_compiler_log_path dir =
+  let ( +/ ) = Filename.concat in
+  dir +/ "lib" +/ "bs" +/ ".compiler.log"
 
-  type kind =
-    | Syntax of diagnostic
-    | Warning of {number: int; diagnostic: diagnostic}
-    | Bug of diagnostic
-    | WarningGenType
-    | Configured
-    | FatalError
-    | Failed of string (* Dependency cycle *)
-    | Unknow
-
-  module Constants = struct
-    let start = "#Start("
-    let done_ = "#Done("
-  end
-
-  let errors_msg_header =
-    [
-      ("We've found a bug for you!", `Bug);
-      ("Syntax error!", `Syntax);
-      ("Warning number", `Warning);
-      ("FAILED:", `Failed);
-    ]
-
-  let kind_to_string = function
-    | Syntax _ -> "Syntax"
-    | Warning _ -> "Warning"
-    | Bug _ -> "Bug"
-    | Failed _ -> "Failed"
-    | _ -> "Unknow"
-
-  let kind_error line =
-    let line = String.trim line in
-    let exists =
-      errors_msg_header
-      |> List.find_opt (fun (prefix, _) -> String.starts_with ~prefix line)
+module Detect = struct
+  let lines_of_channel ic =
+    let rec aux acc =
+      let line = try Some (input_line ic) with End_of_file -> None in
+      match line with
+      | Some s -> aux (s :: acc)
+      | None -> acc
     in
-    match exists with
-    | Some (_, v) -> v
-    | None -> `Unknow
+    List.rev (aux [])
 
-  let is_error_msg line =
-    match kind_error line with
-    | `Unknow -> false
-    | _ -> true
+  let lines_of_command command =
+    let ic = Unix.open_process_in command in
+    let lines = lines_of_channel ic in
+    match Unix.close_process_in ic with
+    | Unix.WEXITED 0 -> Ok lines
+    | Unix.WEXITED 127 -> Error (Printf.sprintf "Command not found: %s" command)
+    | Unix.WEXITED i ->
+      Error (Printf.sprintf "Command failed: %s returned %d" command i)
+    | Unix.WSIGNALED i ->
+      Error (Printf.sprintf "Command failed: %s signal %d" command i)
+    | Unix.WSTOPPED i ->
+      Error (Printf.sprintf "Command failed: %s stopped %d" command i)
 
-  (* Parse Range Formats:
-     Point: line:character (3:9)
-     Multi Line: line_start:character_start-lin_end:character_end (1:8-2:3)
-     Singe Line with Range: line_start:character_tart-charactet_end (3:5-8)
-  *)
-  let parse_range str =
-    let open Lsp.Types in
-    match String.split_on_char ':' str with
-    (* MultLine *)
-    | [line_start; middle; char_end] ->
-      let char_start, line_end =
-        match String.split_on_char '-' middle with
-        | [char_start; line_end] ->
-          (int_of_string char_start, int_of_string line_end)
-        | _ -> failwith ("Failed to parse: " ^ str)
+  let command_output command =
+    match lines_of_command command with
+    | Error err -> Error err
+    | Ok raw -> (
+      match List.filter (fun s -> String.trim s <> "") raw with
+      | [""] -> Error ("Empty output for command: " ^ command)
+      | [c] -> Ok c
+      | lines -> Error (String.concat "\n" lines))
+end
+
+module Build = struct
+  type os = Windows | Linux | Darwin | Unknow of string
+
+  let os =
+    match Sys.os_type with
+    | "Unix" -> (
+      match Detect.command_output "uname -s" with
+      | Ok os -> (
+        match String.lowercase_ascii os with
+        | "darwin" -> Darwin
+        | "linux" -> Linux
+        | s -> Unknow s)
+      | Error err -> Unknow err)
+    | "Win32" | "Cygwin" -> Windows
+    | s -> Unknow s
+
+  let arch =
+    match os with
+    | Linux | Darwin -> (
+      match Detect.command_output "uname -m" with
+      | Ok arch -> Ok (String.lowercase_ascii arch)
+      | Error err -> Error err)
+    | Windows -> (
+      match Sys.getenv_opt "PROCESSOR_ARCHITECTURE" with
+      | None -> Error "Not found arch for Windows"
+      | Some arch -> Ok (String.lowercase_ascii arch))
+    | Unknow s -> Error ("Unkdown system: " ^ s)
+
+  let get_bin root_path =
+    let ( / ) = Filename.concat in
+    let folder =
+      match os with
+      | Darwin -> (
+        match arch with
+        | Ok arch -> (
+          match arch with
+          | "arm64" -> Ok ("darwin" ^ arch)
+          | _ -> Ok "darwin")
+        | Error err -> Error ("Cannot find arch arch for Darwin: " ^ err))
+      | Windows -> Ok "win32"
+      | Linux -> Ok "linux"
+      | Unknow os -> Error ("Cannot find arch for: " ^ os)
+    in
+    match folder with
+    | Ok dir ->
+      let bin =
+        root_path / "node_modules" / "rescript" / dir / "rescript.exe"
       in
-      let start =
-        Position.create ~character:(char_start - 1)
-          ~line:(int_of_string line_start - 1)
-      in
-      let end_ =
-        Position.create
-          ~character:(int_of_string char_end - 1)
-          ~line:(line_end - 1)
-      in
-      Range.create ~start ~end_
-    (* Single line and point *)
-    | [line; last_part] -> (
-      match String.split_on_char '-' last_part with
-      (* Point *)
-      | [_] ->
-        let position =
-          Position.create
-            ~character:(int_of_string last_part - 1)
-            ~line:(int_of_string line - 1)
-        in
-        Range.create ~start:position ~end_:position
-      | [char_start; char_end] ->
-        let line = int_of_string line - 1 in
-        let start =
-          Position.create ~character:(int_of_string char_start - 1) ~line
-        in
-        let end_ =
-          Position.create ~character:(int_of_string char_end - 1) ~line
-        in
-        Range.create ~start ~end_
-      | _ -> failwith ("Failed to parse: " ^ str))
-    | _ -> failwith ("Failed to parse: " ^ str)
+      if Sys.file_exists bin then Ok bin
+      else Error ("Cannot find rescript binary at: " ^ bin)
+    | Error err -> Error err
 
-  let parse_path_and_range str =
-    match String.split_on_char ':' str with
-    | [] -> failwith ("Failed to parse path and range: " ^ str)
-    | hd :: tl ->
-      let uri = Lsp.Uri.of_path (String.trim hd) in
-      let range = parse_range (String.concat ":" tl) in
-      let location = Lsp.Types.Location.create ~range ~uri in
-      location
-
-  let remove_code lines =
-    let is_code line =
-      let dividers = ["┆"; "│"] in
-      let line = String.trim line in
-      let len = String.length line in
-      if len > 0 then
-        let is_valid_char =
-          match line.[0] with
-          | '0' .. '9' | '.' -> true
-          | _ -> false
-        in
-        match is_valid_char with
-        | false ->
-          List.map (fun prefix -> String.starts_with ~prefix line) dividers
-          |> List.mem true
-        | true -> true
-      else true
+  type state = Compiled | Failed
+  let run (state : State.t) =
+    let params = State.params state in
+    let cwd =
+      match params.rootUri with
+      | Some uri -> Lsp.Uri.to_path uri
+      | None -> Sys.getcwd ()
     in
-    let rec loop new_lines lines =
-      match lines with
-      | [] -> lines
-      | hd :: tl -> (
-        match is_code hd with
-        | true -> loop tl tl
-        | false -> new_lines)
+    let prog = State.binary state in
+    let dir_of_bin = Filename.dirname prog in
+    let%lwt status =
+      Lwt_process.exec ~cwd (prog, [|prog|])
     in
-    loop [] lines
+    match status with
+    | WEXITED 0 -> Lwt.return Compiled
+    | _ -> Lwt.return Failed
+  (* let make = Lwt.async (fun () ->
+       let pid =
+         Spawn.spawn ~prog ~argv:[prog; "build"; "-with-deps"] ~cwd:(Path cwd) ()
+       in
+       Lwt.return_unit
+     ) in
+     make *)
+  (* let fd = Unix.openfile dir_of_bin [ O_RDONLY ] 0 in *)
+  (* let pid =
+       Spawn.spawn ~prog ~argv:[prog; "build"; "-with-deps"] ~cwd:(Path cwd) ()
+     in
 
-  let parse_message lines =
-    let rec loop msg lines =
-      match lines with
-      | [] -> ([], lines)
-      | hd :: tl ->
-        if is_error_msg hd || String.starts_with ~prefix:Constants.done_ hd then
-          (msg, lines)
-        else loop (String.trim hd :: msg) tl
-    in
-
-    let msg, lines = loop [] lines in
-    match msg with
-    | [] -> ([], lines)
-    | msg -> (List.rev msg, lines)
-
-  let parse_errors lines =
-    let process_body lines =
-      match lines with
-      | [] -> (None, lines)
-      | location :: tl -> (
-        let location = parse_path_and_range location in
-        let tl = remove_code tl in
-        match tl with
-        | [] -> (None, tl)
-        | message :: tl ->
-          let message, tl = parse_message (message :: tl) in
-          (Some {message = message |> String.concat "\n"; location}, tl))
-    in
-
-    match lines with
-    | [] -> (None, lines)
-    | header_error_msg :: tl -> (
-      match kind_error header_error_msg with
-      | (`Syntax | `Bug) as kind -> (
-        let diagnostic, tl = process_body tl in
-        match diagnostic with
-        | None -> (None, tl)
-        | Some diagnostic -> (
-          match kind with
-          | `Syntax -> (Some (Syntax diagnostic), tl)
-          | `Bug -> (Some (Bug diagnostic), tl)))
-      | `Warning -> (
-        let warning_msg = String.length "Warning number " in
-        let configured_as_error_msg = "(configured as error)" in
-        let msg = String.trim header_error_msg in
-        let warning_as_error, number =
-          match String.ends_with ~suffix:configured_as_error_msg msg with
-          | true ->
-            let number =
-              String.sub msg warning_msg (String.length msg - warning_msg)
-            in
-            let number =
-              String.sub number 0
-                (String.length number - String.length configured_as_error_msg)
-            in
-            (true, number)
-          | false ->
-            let number =
-              String.sub msg warning_msg (String.length msg - warning_msg)
-            in
-            (false, number)
-        in
-        let warning_number = number |> String.trim |> int_of_string in
-        let loc, tl = process_body tl in
-        match loc with
-        | None -> (None, tl)
-        | Some diagnostic ->
-          if warning_as_error then (Some (Bug diagnostic), tl)
-          else (Some (Warning {number = warning_number; diagnostic}), tl))
-      | `Failed -> (
-        (* TODO: better error message for Dependency cycle *)
-        let failed = String.length "FAILED: " in
-        let msg = String.trim header_error_msg in
-        let message = String.sub msg failed (String.length msg - failed) in
-        match String.starts_with ~prefix:"dependency cycle" message with
-        | true -> (Some (Failed message), tl)
-        | false -> (None, tl))
-      | `Unknow -> (None, lines))
-
-  let parse (content : string) =
-    (* Drop empty lines *)
-    let lines =
-      String.split_on_char '\n' content
-      |> List.filter (fun line -> not @@ String.equal (String.trim line) "")
-    in
-
-    let rec loop lines diagnostics =
-      match lines with
-      | [] -> diagnostics
-      | hd :: tl -> (
-        match String.starts_with ~prefix:Constants.start hd with
-        | true -> loop tl diagnostics
-        | false -> (
-          match String.starts_with ~prefix:Constants.done_ hd with
-          | true -> diagnostics
-          | false ->
-            let diagnostic, tl = parse_errors (hd :: tl) in
-            let diagnostics =
-              match diagnostic with
-              | Some diagnostic -> diagnostic :: diagnostics
-              | None -> diagnostics
-            in
-            loop tl diagnostics))
-    in
-
-    loop lines []
-
-  let to_diagnostics_lsp (diagnostics : kind list) =
-    diagnostics
-    |> List.filter_map (fun diagnostic ->
-           match diagnostic with
-           | Bug diagnostic ->
-             Some (diagnostic, Lsp.Types.DiagnosticSeverity.Error)
-           | Warning {number; diagnostic} ->
-             Some
-               ( {
-                   diagnostic with
-                   message =
-                     diagnostic.message ^ " Warning " ^ string_of_int number;
-                 },
-                 Lsp.Types.DiagnosticSeverity.Warning )
-           | _ -> None)
-
-  let to_stdout (kind : kind) =
-    print_newline ();
-
-    (match kind with
-    | Bug {message; location} ->
-      print_endline ("message: " ^ message);
-      print_endline
-        ("location: "
-        ^ (Lsp.Types.Location.yojson_of_t location |> Lsp.Import.Json.to_string)
-        )
-    | Warning {number; diagnostic = {message; location}} ->
-      print_endline ("message: " ^ message);
-      print_endline ("number: " ^ string_of_int number);
-      print_endline
-        ("location: "
-        ^ (Lsp.Types.Location.yojson_of_t location |> Lsp.Import.Json.to_string)
-        )
-    | _ -> print_endline "TODO");
-    print_newline ()
+     match snd (Unix.waitpid [] pid) with
+     | WEXITED 0 -> Lwt.return Compiled
+     | WEXITED _ | WSTOPPED _ | WSIGNALED _ -> Lwt.return Failed *)
 end

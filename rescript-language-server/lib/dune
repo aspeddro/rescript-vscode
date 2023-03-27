@@ -1,7 +1,10 @@
 (library
  (name rescript_language_server)
- (libraries analysis lsp jsonrpc))
+ (libraries analysis lsp jsonrpc lwt lwt.unix spawn)
+ (preprocess
+  (pps lwt_ppx)))
 
 (env
-  (dev
-    (flags (:standard -w -26-27-33))))
+ (dev
+  (flags
+   (:standard -w -26-27-33-21))))

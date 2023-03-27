@@ -14,4 +14,4 @@ let () =
 
   Arg.parse args (fun err -> raise @@ Arg.Bad ("Unknow option: " ^ err)) usage;
 
-  Rescript_language_server.Server.run ()
+  Rescript_language_server.Server.run_lwt ()

@@ -1,4 +1,4 @@
-open Rescript_language_server.Compiler
+open Rescript_language_server.Diagnostic
 open Lsp.Types
 
 let () =
