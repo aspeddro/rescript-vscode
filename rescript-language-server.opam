@@ -9,6 +9,8 @@ depends: [
   "dune" {>= "3.6"}
   "ocaml" {>= "4.10"}
   "lsp"
+  "lwt"
+  "lwt_ppx"
   "odoc" {with-doc}
 ]
 build: [

@@ -90,6 +90,7 @@ export function activate(context: ExtensionContext) {
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     let command = "/home/pedro/Desktop/projects/rescript-vscode/_build/default/rescript-language-server/bin/main.exe"
+    // let command = "/home/pedro/Desktop/projects/rescript-vscode/_build/install/default/bin/rescriptlsp"
     let serverOptions: ServerOptions = {
       run: { command },
       debug: {
@@ -118,6 +119,9 @@ export function activate(context: ExtensionContext) {
       markdown: {
         isTrusted: true,
       },
+      connectionOptions: {
+        maxRestartCount: 0
+      }
     };
 
     const client = new LanguageClient(

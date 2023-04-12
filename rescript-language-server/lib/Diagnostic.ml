@@ -1,5 +1,8 @@
-type t = {db: (Lsp.Uri.t, Lsp.Types.Diagnostic.t list) Hashtbl.t}
-let create () = {db = Hashtbl.create 10}
+type t =
+  ( Lsp.Types.WorkspaceFolder.t,
+    Lsp.Types.PublishDiagnosticsParams.t list )
+  Hashtbl.t
+let create () = Hashtbl.create 4
 
 module ParseLog = struct
   type diagnostic = {
@@ -318,101 +321,29 @@ let from_log ~path =
 
     Some r
 
-let update t ~path =
+let update workspace (t : t) =
+  let path = Workspaces.compiler_log workspace in
   match from_log ~path with
-  | None -> ()
+  | None -> Utils.window_notification ("Failed to read log: " ^ path)
   | Some diagnostics -> (
     match diagnostics with
-    | [] ->
+    | [] -> (
       (* When received no diagnostic then we clean all diagnostics *)
-      t.db |> Hashtbl.iter (fun uri _ -> Hashtbl.replace t.db uri [])
-    | _ ->
-      diagnostics
-      |> List.iter
-           (fun ({diagnostics; uri; _} : Lsp.Types.PublishDiagnosticsParams.t)
-           ->
-             match Hashtbl.find_opt t.db uri with
-             | Some _ -> Hashtbl.replace t.db uri diagnostics
-             | None ->
-               let replace =
-                 if Hashtbl.length t.db = 0 then diagnostics else []
-               in
-               Hashtbl.replace t.db uri replace))
+      match Hashtbl.find_opt t workspace with
+      | Some previous_diagnostics ->
+        Hashtbl.replace t workspace
+          (List.map
+             (fun (d : Lsp.Types.PublishDiagnosticsParams.t) ->
+               {d with diagnostics = []})
+             previous_diagnostics)
+      | None -> ())
+    | _ -> Hashtbl.replace t workspace diagnostics)
 
-(* let get_status t = *)
-(*   match Hashtbl.length t.db with *)
-(*   | 0 -> () *)
-(*   | _ -> *)
-(*     let r = *)
-(*       Hashtbl.fold *)
-(*         (fun a b acc -> *)
-(*           (* let list = *) *)
-(*           (*   b |> List.map (fun x -> Lsp.Types.Diagnostic.yojson_of_t x) *) *)
-(*           (* in *) *)
-(*           let a = *)
-(*             `Assoc *)
-(*               [ *)
-(*                 ("uri", `String (Lsp.Uri.to_string a)); *)
-(*                 ("diagnostics", `String (string_of_int (List.length b))); *)
-(*               ] *)
-(*           in *)
-(*           a :: acc) *)
-(*         t.db [] *)
-(*     in *)
-(*     r *)
-(*     |> List.iter (fun params -> *)
-(*            let m = Lsp.Import.Json.to_string params in *)
-(*            let params = *)
-(*              Jsonrpc.Structured.t_of_yojson *)
-(*                (`Assoc [("type", `Int 3); ("message", `String m)]) *)
-(*            in *)
-(*            Io.write *)
-(*              (Jsonrpc.Packet.Notification *)
-(*                 (Jsonrpc.Notification.create ~method_:"window/showMessage" *)
-(*                    ?params:(Some params) ()))) *)
-
-let send (diagnostics : Lsp.Types.PublishDiagnosticsParams.t list) =
-  diagnostics
-  |> Lwt_list.iter_p (fun diagnostic ->
-         let params =
-           Jsonrpc.Structured.t_of_yojson
-             (Lsp.Types.PublishDiagnosticsParams.yojson_of_t diagnostic)
-         in
-         Io.write
-         @@ Jsonrpc.Packet.Notification
-              (Jsonrpc.Notification.create
-                 ~method_:"textDocument/publishDiagnostics"
-                 ?params:(Some params) ()))
-
-let publish t =
-  Hashtbl.fold
-    (fun uri diagnostics acc ->
-      let diagnostics_publish =
-        Lsp.Types.PublishDiagnosticsParams.create ~diagnostics ~uri ()
-      in
-      let params =
-        Jsonrpc.Structured.t_of_yojson
-          (Lsp.Types.PublishDiagnosticsParams.yojson_of_t diagnostics_publish)
-      in
-      let result =
-        Jsonrpc.Packet.Notification
-          (Jsonrpc.Notification.create
-             ~method_:"textDocument/publishDiagnostics" ?params:(Some params) ())
-      in
-      result :: acc)
-    t.db []
-  |> Lwt_list.iter_p Io.write
-
-let send_by_uri t uri =
-  let diagnostics =
-    match Hashtbl.find_opt t.db uri with
-    | Some diagnostics -> diagnostics
-    | None -> []
-  in
-
-  (* Utils.window_notification ("Uri: " ^ string_of_int (List.length diagnostics)); *)
-  let diagnostics =
-    Lsp.Types.PublishDiagnosticsParams.create ~diagnostics ~uri ()
-  in
-
-  send [diagnostics]
+let publish workspace (t : t) =
+  match Hashtbl.find_opt t workspace with
+  | Some diagnostics ->
+    diagnostics
+    |> List.iter (fun diagnostic ->
+           Server2.nofification
+             (Lsp.Server_notification.PublishDiagnostics diagnostic))
+  | None -> ()

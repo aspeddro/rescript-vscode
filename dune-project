@@ -28,5 +28,8 @@
  (name rescript-language-server)
  (synopsis "LSP Server for ReScript")
  (depends
-  (ocaml (>= 4.10))
-  lsp))
+  (ocaml
+   (>= 4.10))
+  lsp
+  lwt
+  lwt_ppx))

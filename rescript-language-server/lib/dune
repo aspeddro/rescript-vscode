@@ -1,8 +1,6 @@
 (library
  (name rescript_language_server)
- (libraries analysis lsp jsonrpc lwt lwt.unix spawn)
- (preprocess
-  (pps lwt_ppx)))
+ (libraries analysis lsp jsonrpc luv fpath re))
 
 (env
  (dev
