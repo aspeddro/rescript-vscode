@@ -8,9 +8,8 @@ bug-reports: "https://github.com/rescript-lang/rescript-vscode/issues"
 depends: [
   "dune" {>= "3.6"}
   "ocaml" {>= "4.10"}
+  "luv"
   "lsp"
-  "lwt"
-  "lwt_ppx"
   "odoc" {with-doc}
 ]
 build: [

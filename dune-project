@@ -30,6 +30,5 @@
  (depends
   (ocaml
    (>= 4.10))
-  lsp
-  lwt
-  lwt_ppx))
+  luv
+  lsp))
