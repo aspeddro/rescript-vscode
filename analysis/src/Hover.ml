@@ -125,7 +125,8 @@ let getHoverViaCompletions ~debug ~path ~pos ~currentFile ~forHover
     ~supportsMarkdownLinks =
   match Completions.getCompletions ~debug ~path ~pos ~currentFile ~forHover with
   | None -> None
-  | Some (completions, {file; package}) -> (
+  | Some (completions, ({file; package} as full), scope) -> (
+    let rawOpens = Scope.getRawOpens scope in
     match completions with
     | {kind = Label typString; docstring} :: _ ->
       let parts =
@@ -142,14 +143,19 @@ let getHoverViaCompletions ~debug ~path ~pos ~currentFile ~forHover
         let parts = typeString :: docstring in
         Some (String.concat "\n\n" parts)
       | None -> None)
-    | _ -> (
-      match CompletionBackEnd.completionsGetTypeEnv completions with
+    | {env} :: _ -> (
+      let opens = CompletionBackEnd.getOpens ~debug ~rawOpens ~package ~env in
+      match
+        CompletionBackEnd.completionsGetTypeEnv2 ~debug ~full ~rawOpens ~opens
+          ~pos ~scope completions
+      with
       | Some (typ, _env) ->
         let typeString =
           hoverWithExpandedTypes ~file ~package ~supportsMarkdownLinks typ
         in
         Some typeString
-      | None -> None))
+      | None -> None)
+    | _ -> None)
 
 let newHover ~full:{file; package} ~supportsMarkdownLinks locItem =
   match locItem.locType with

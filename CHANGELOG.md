@@ -12,9 +12,25 @@
 
 ## master
 
+## 1.18.0
+
+#### :rocket: New Feature
+
+- Docstring template Code Action. https://github.com/rescript-lang/rescript-vscode/pull/764
+- Improve unlabelled argument names in completion function templates. https://github.com/rescript-lang/rescript-vscode/pull/754
+- Add `Some(fieldName)` case when completing in a pattern with an option on a record field. https://github.com/rescript-lang/rescript-vscode/pull/766
+
+#### :bug: Bug Fix
+
+- Fix URL scheme for Code Action. https://github.com/rescript-lang/rescript-vscode/pull/748
+- Support uncurried functions in various places where we look up and use function types. https://github.com/rescript-lang/rescript-vscode/pull/771
+
+## 1.16.0
+
 #### :rocket: New Feature
 
 - Greatly extend completion abilities for unsaved code. WARNING: Might be a bit unstable initially. Report any issues you see. https://github.com/rescript-lang/rescript-vscode/pull/712
+- Provide hovers for more unsaved code via the new completion features. https://github.com/rescript-lang/rescript-vscode/pull/749
 
 ## 1.14.0
 

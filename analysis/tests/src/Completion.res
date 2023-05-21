@@ -319,7 +319,7 @@ let ff = (~opt1=0, ~a, ~b, (), ~opt2=0, (), ~c) => a + b + c + opt1 + opt2
 
 type callback = (~a: int) => int
 
-let withCallback: (~b: int) => callback = (~b, ~a) => a + b
+let withCallback: (~b: int) => callback = (~b) => { (); (~a) => a + b }
 
 // withCallback(~
 //               ^com
@@ -450,3 +450,15 @@ type someVariantWithDeprecated =
 // Should show deprecated status
 // let v: someVariantWithDeprecated =
 //                                   ^com
+
+let uncurried = (. num) => num + 2
+
+// let _ = uncurried(. 1)->toS
+//                            ^com
+
+type withUncurried = {
+  fn: (. int) => unit
+}
+
+// let f: withUncurried = {fn: }
+//                            ^com

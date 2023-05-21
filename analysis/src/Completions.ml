@@ -19,12 +19,12 @@ let getCompletions ~debug ~path ~pos ~currentFile ~forHover =
           |> CompletionBackEnd.processCompletable ~debug ~full ~pos ~scope ~env
                ~forHover
         in
-        Some (completables, full)))
+        Some (completables, full, scope)))
 
 let complete ~debug ~path ~pos ~currentFile =
   let completions =
     match getCompletions ~debug ~path ~pos ~currentFile ~forHover:false with
     | None -> []
-    | Some (completions, _) -> completions
+    | Some (completions, _, _) -> completions
   in
   completions |> List.map CompletionBackEnd.completionToItem

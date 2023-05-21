@@ -510,9 +510,10 @@ let getComplementaryCompletionsForTypedValue ~opens ~allFiles ~scope ~env prefix
   in
   localCompletionsWithOpens @ fileModules
 
-let getCompletionsForPath ~debug ~package ~opens ~allFiles ~pos ~exact ~scope
+let getCompletionsForPath ~debug ~package ~opens ~full ~pos ~exact ~scope
     ~completionContext ~env path =
   if debug then Printf.printf "Path %s\n" (path |> String.concat ".");
+  let allFiles = allFilesInPackage full.package in
   match path with
   | [] -> []
   | [prefix] ->
@@ -621,8 +622,8 @@ let completionsGetCompletionType ~full = function
   | {Completion.kind = ExtractedType (typ, _); env} :: _ -> Some (typ, env)
   | _ -> None
 
-let rec completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-    ~pos ~scope = function
+let rec completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos ~scope
+    = function
   | {Completion.kind = Value typ; env} :: _
   | {Completion.kind = ObjLabel typ; env} :: _
   | {Completion.kind = Field ({typ}, _); env} :: _ ->
@@ -630,9 +631,8 @@ let rec completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
   | {Completion.kind = FollowContextPath ctxPath; env} :: _ ->
     ctxPath
     |> getCompletionsForContextPath ~debug ~full ~env ~exact:true ~opens
-         ~rawOpens ~allFiles ~pos ~scope
-    |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-         ~pos ~scope
+         ~rawOpens ~pos ~scope
+    |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos ~scope
   | {Completion.kind = Type typ; env} :: _ -> (
     match TypeUtils.extractTypeFromResolvedType typ ~env ~full with
     | None -> None
@@ -642,21 +642,20 @@ let rec completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
   | _ -> None
 
 and completionsGetTypeEnv2 ~debug (completions : Completion.t list) ~full ~opens
-    ~rawOpens ~allFiles ~pos ~scope =
+    ~rawOpens ~pos ~scope =
   match completions with
   | {Completion.kind = Value typ; env} :: _ -> Some (typ, env)
   | {Completion.kind = ObjLabel typ; env} :: _ -> Some (typ, env)
   | {Completion.kind = Field ({typ}, _); env} :: _ -> Some (typ, env)
   | {Completion.kind = FollowContextPath ctxPath; env} :: _ ->
     ctxPath
-    |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-         ~env ~exact:true ~scope
-    |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-         ~scope
+    |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+         ~exact:true ~scope
+    |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
   | _ -> None
 
-and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-    ~env ~exact ~scope ?(mode = Regular) contextPath =
+and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env ~exact
+    ~scope ?(mode = Regular) contextPath =
   if debug then
     Printf.printf "ContextPath %s\n"
       (Completable.contextPathToString contextPath);
@@ -702,8 +701,8 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
     | Regular -> (
       match
         cp
-        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-             ~pos ~env ~exact:true ~scope
+        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+             ~exact:true ~scope
         |> completionsGetCompletionType ~full
       with
       | None -> []
@@ -725,8 +724,8 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
   | CPOption cp -> (
     match
       cp
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
       |> completionsGetCompletionType ~full
     with
     | None -> []
@@ -738,15 +737,14 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
       ])
   | CPId (path, completionContext) ->
     path
-    |> getCompletionsForPath ~debug ~package ~opens ~allFiles ~pos ~exact
+    |> getCompletionsForPath ~debug ~package ~opens ~full ~pos ~exact
          ~completionContext ~env ~scope
   | CPApply (cp, labels) -> (
     match
       cp
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
-      |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
+      |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     with
     | Some ((TypeExpr typ | ExtractedType (Tfunction {typ})), env) -> (
       let rec reconstructFunctionType args tRet =
@@ -785,19 +783,19 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
   | CPField (CPId (path, Module), fieldName) ->
     (* M.field *)
     path @ [fieldName]
-    |> getCompletionsForPath ~debug ~package ~opens ~allFiles ~pos ~exact
+    |> getCompletionsForPath ~debug ~package ~opens ~full ~pos ~exact
          ~completionContext:Field ~env ~scope
   | CPField (cp, fieldName) -> (
     let completionsForCtxPath =
       cp
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
     in
     let extracted =
       match
         completionsForCtxPath
-        |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-             ~pos ~scope
+        |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos
+             ~scope
       with
       | Some (TypeExpr typ, env) -> (
         match typ |> TypeUtils.extractRecordType ~env ~package with
@@ -829,10 +827,9 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
     (* TODO: Also needs to support ExtractedType *)
     match
       cp
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
-      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-           ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
+      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     with
     | Some (typ, env) -> (
       match typ |> TypeUtils.extractObjectType ~env ~package with
@@ -857,10 +854,9 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
   | CPPipe {contextPath = cp; id = funNamePrefix; lhsLoc; inJsx} -> (
     match
       cp
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope ~mode:Pipe
-      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-           ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope ~mode:Pipe
+      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     with
     | None -> []
     | Some (typ, envFromCompletionItem) -> (
@@ -960,7 +956,7 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
         let completions =
           completionPath @ [funNamePrefix]
           |> getCompletionsForPath ~debug ~completionContext:Value ~exact:false
-               ~package ~opens ~allFiles ~pos ~env ~scope
+               ~package ~opens ~full ~pos ~env ~scope
         in
         let completions =
           completions
@@ -1007,8 +1003,8 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
       ctxPaths
       |> List.map (fun contextPath ->
              contextPath
-             |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens
-                  ~allFiles ~pos ~env ~exact:true ~scope)
+             |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos
+                  ~env ~exact:true ~scope)
       |> List.filter_map (fun completionItems ->
              match completionItems with
              | {Completion.kind = Value typ} :: _ -> Some typ
@@ -1024,9 +1020,8 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
     let findTypeOfValue path =
       path
       |> getCompletionsForPath ~debug ~completionContext:Value ~exact:true
-           ~package ~opens ~allFiles ~pos ~env ~scope
-      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-           ~scope
+           ~package ~opens ~full ~pos ~env ~scope
+      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     in
     let lowercaseComponent =
       match pathToComponent with
@@ -1039,7 +1034,7 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
           match
             path
             |> getCompletionsForPath ~debug ~completionContext:Type ~exact:true
-                 ~package ~opens ~allFiles ~pos ~env ~scope
+                 ~package ~opens ~full ~pos ~env ~scope
           with
           | {kind = Type {kind = Abstract (Some (p, _))}} :: _ ->
             (* This case happens when what we're looking for is a type alias.
@@ -1070,10 +1065,10 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
     let labels, env =
       match
         functionContextPath
-        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-             ~pos ~env ~exact:true ~scope
-        |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-             ~pos ~scope
+        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+             ~exact:true ~scope
+        |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos
+             ~scope
       with
       | Some ((TypeExpr typ | ExtractedType (Tfunction {typ})), env) ->
         (typ |> TypeUtils.getArgs ~full ~env, env)
@@ -1108,10 +1103,9 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
   | CPatternPath {rootCtxPath; nested} -> (
     match
       rootCtxPath
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
-      |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
+      |> completionsGetCompletionType2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     with
     | Some (typ, env) -> (
       match typ |> TypeUtils.resolveNestedPatternPath ~env ~full ~nested with
@@ -1142,7 +1136,12 @@ let getOpens ~debug ~rawOpens ~package ~env =
       ^ " "
       ^ String.concat " "
           (resolvedOpens
-          |> List.map (fun (e : QueryEnv.t) -> Uri.toString e.file.uri)));
+          |> List.map (fun (e : QueryEnv.t) ->
+                 let name = Uri.toString e.file.uri in
+
+                 if Utils.startsWith name "pervasives." then
+                   Filename.chop_extension name
+                 else name)));
   (* Last open takes priority *)
   List.rev resolvedOpens
 
@@ -1236,13 +1235,26 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
                    | Some insertText -> Some ("Some(" ^ insertText ^ ")"));
                })
     in
-    [
-      Completion.create "None" ~kind:(kindFromInnerType t) ~env;
+    let noneCase = Completion.create "None" ~kind:(kindFromInnerType t) ~env in
+    let someAnyCase =
       Completion.createWithSnippet ~name:"Some(_)" ~kind:(kindFromInnerType t)
-        ~env ~insertText:"Some(${1:_})" ();
-    ]
-    @ expandedCompletions
-    |> filterItems ~prefix
+        ~env ~insertText:"Some(${1:_})" ()
+    in
+    let completions =
+      match completionContext with
+      | Some (Completable.CameFromRecordField fieldName) ->
+        [
+          Completion.createWithSnippet
+            ~name:("Some(" ^ fieldName ^ ")")
+            ~kind:(kindFromInnerType t) ~env
+            ~insertText:("Some(${1:" ^ fieldName ^ "})")
+            ();
+          someAnyCase;
+          noneCase;
+        ]
+      | _ -> [noneCase; someAnyCase]
+    in
+    completions @ expandedCompletions |> filterItems ~prefix
   | Tuple (env, exprs, typ) ->
     let numExprs = List.length exprs in
     [
@@ -1280,7 +1292,7 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
                    (Field (field, TypeUtils.extractedTypeToString extractedType))
                  ~env)
       |> filterItems ~prefix
-    | None ->
+    | _ ->
       if prefix = "" then
         [
           Completion.createWithSnippet ~name:"{}"
@@ -1305,7 +1317,7 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
              Completion.create field.fname.txt ~kind:(Label "Inline record")
                ?deprecated:field.deprecated ~env)
       |> filterItems ~prefix
-    | None ->
+    | _ ->
       if prefix = "" then
         [
           Completion.createWithSnippet ~name:"{}"
@@ -1342,28 +1354,19 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
           ~env ();
       ]
     else []
-  | Tfunction {env; typ; args} when prefix = "" && mode = Expression ->
-    let prettyPrintArgTyp ?currentIndex (argTyp : Types.type_expr) =
-      let indexText =
-        match currentIndex with
-        | None -> ""
-        | Some i -> string_of_int i
-      in
-      match argTyp |> TypeUtils.pathFromTypeExpr with
-      | None -> "v" ^ indexText
-      | Some p -> (
-        (* Pretty print a few common patterns. *)
-        match Path.head p |> Ident.name with
-        | "unit" -> "()"
-        | "ReactEvent" | "JsxEvent" -> "event"
-        | _ -> "v" ^ indexText)
-    in
+  | Tfunction {env; typ; args; uncurried} when prefix = "" && mode = Expression
+    ->
+    let shouldPrintAsUncurried = uncurried && !Config.uncurried <> Uncurried in
     let mkFnArgs ~asSnippet =
       match args with
-      | [(Nolabel, argTyp)] when TypeUtils.typeIsUnit argTyp -> "()"
+      | [(Nolabel, argTyp)] when TypeUtils.typeIsUnit argTyp ->
+        if shouldPrintAsUncurried then "(. )" else "()"
       | [(Nolabel, argTyp)] ->
-        let varName = prettyPrintArgTyp argTyp in
-        if asSnippet then "${1:" ^ varName ^ "}" else varName
+        let varName =
+          CompletionExpressions.prettyPrintFnTemplateArgName ~env ~full argTyp
+        in
+        let argsText = if asSnippet then "${1:" ^ varName ^ "}" else varName in
+        if shouldPrintAsUncurried then "(. " ^ argsText ^ ")" else argsText
       | _ ->
         let currentUnlabelledIndex = ref 0 in
         let argsText =
@@ -1377,13 +1380,16 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
                    else (
                      currentUnlabelledIndex := !currentUnlabelledIndex + 1;
                      let num = !currentUnlabelledIndex in
-                     let varName = prettyPrintArgTyp typ ~currentIndex:num in
+                     let varName =
+                       CompletionExpressions.prettyPrintFnTemplateArgName
+                         ~currentIndex:num ~env ~full typ
+                     in
                      if asSnippet then
                        "${" ^ string_of_int num ^ ":" ^ varName ^ "}"
                      else varName))
           |> String.concat ", "
         in
-        "(" ^ argsText ^ ")"
+        "(" ^ if shouldPrintAsUncurried then ". " else "" ^ argsText ^ ")"
     in
     [
       Completion.createWithSnippet
@@ -1416,20 +1422,19 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
   let package = full.package in
   let rawOpens = Scope.getRawOpens scope in
   let opens = getOpens ~debug ~rawOpens ~package ~env in
-  let allFiles = FileSet.union package.projectFiles package.dependenciesFiles in
+  let allFiles = allFilesInPackage package in
   let findTypeOfValue path =
     path
     |> getCompletionsForPath ~debug ~completionContext:Value ~exact:true
-         ~package ~opens ~allFiles ~pos ~env ~scope
-    |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-         ~scope
+         ~package ~opens ~full ~pos ~env ~scope
+    |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
   in
   match completable with
   | Cnone -> []
   | Cpath contextPath ->
     contextPath
-    |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-         ~env ~exact:forHover ~scope
+    |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+         ~exact:forHover ~scope
   | Cjsx ([id], prefix, identsSeen) when String.uncapitalize_ascii id = id ->
     (* Lowercase JSX tag means builtin *)
     let mkLabel (name, typString) =
@@ -1486,10 +1491,9 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
     let labels =
       match
         cp
-        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-             ~pos ~env ~exact:true ~scope
-        |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-             ~scope
+        |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+             ~exact:true ~scope
+        |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
       with
       | Some (typ, _env) ->
         if debug then
@@ -1523,10 +1527,9 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
     in
     match
       contextPath
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
-      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~allFiles ~pos
-           ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
+      |> completionsGetTypeEnv2 ~debug ~full ~opens ~rawOpens ~pos ~scope
     with
     | Some (typ, env) -> (
       match
@@ -1557,8 +1560,8 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
     in
     match
       contextPath
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:true ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
       |> completionsGetCompletionType ~full
     with
     | None -> regularCompletions
@@ -1637,8 +1640,8 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
     in
     let completionsForContextPath =
       contextPath
-      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~allFiles
-           ~pos ~env ~exact:forHover ~scope
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:forHover ~scope
     in
     completionsForContextPath
     |> List.map (fun (c : Completion.t) ->
