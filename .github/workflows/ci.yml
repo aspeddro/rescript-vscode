@@ -229,6 +229,10 @@ jobs:
         npm ci
         npm run build
 
+    - name: Logging
+      run: |
+        echo "${{toJSON(github.event)}}"
+
     - name: Publish @rescript/tools package
       if: startsWith(github.event.head_commit.message, 'publish tools')
       working-directory: tools
