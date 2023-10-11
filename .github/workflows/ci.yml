@@ -31,7 +31,7 @@ jobs:
           - os: windows-latest
             artifact-folder: win32
 
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-20.04
 
     steps:
     # needed for Windows testing
