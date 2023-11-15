@@ -12,13 +12,54 @@
 
 ## master
 
+## 1.26.0
+
+#### :bug: Bug Fix
+
+- More robust handling of namespaces in pipe completions. https://github.com/rescript-lang/rescript-vscode/pull/850
+
+## 1.24.0
+
+#### :bug: Bug Fix
+
+- Clean up name of namespaced module when hovering. https://github.com/rescript-lang/rescript-vscode/pull/845
+- Don't complete illegal file module names. https://github.com/rescript-lang/rescript-vscode/pull/844
+- Fix issue `open` on submodules exposed via `-open` in bsconfig.json/rescript.json, that would cause the content of those `open` modules to not actually appear in autocomplete. https://github.com/rescript-lang/rescript-vscode/pull/842
+- Account for namespace when filtering pipe completion items. https://github.com/rescript-lang/rescript-vscode/pull/843
+
+## 1.22.0
+
+#### :nail_care: Polish
+
+- Resolve module aliases in hover. https://github.com/rescript-lang/rescript-vscode/pull/820
+
+## 1.20.0
+
 #### :rocket: New Feature
 
 - Add support for syntax highlighting in `%raw` and `%ffi` extension points. https://github.com/rescript-lang/rescript-vscode/pull/774
+- Add completion to top level decorators. https://github.com/rescript-lang/rescript-vscode/pull/799
+- Add code action for wrapping patterns where option is expected with `Some`. https://github.com/rescript-lang/rescript-vscode/pull/806
+- Better completion from identifiers with inferred types. https://github.com/rescript-lang/rescript-vscode/pull/808
+- Make suggested template functions async when the target function returns a promise. https://github.com/rescript-lang/rescript-vscode/pull/816
+- Fix code action for inserting undefined record fields in ReScript v11. https://github.com/rescript-lang/rescript-vscode/pull/817
+
+#### :nail_care: Polish
+
+- Revamp "Insert missing cases" code action to make it apply in more cases and be much more robust. https://github.com/rescript-lang/rescript-vscode/pull/804
+- Make the completion engine understand async/await. https://github.com/rescript-lang/rescript-vscode/pull/813
+- Comments are now automatically closed and indented. https://github.com/rescript-lang/rescript-vscode/pull/815
 
 #### :bug: Bug Fix
 
 - Fix invalid range for `definition`. https://github.com/rescript-lang/rescript-vscode/pull/781
+- Don't emit object keys in uppercase as namespace. https://github.com/rescript-lang/rescript-vscode/pull/798
+- Fix accidental output of extra `|` when producing exhaustive switch code for polyvariants. https://github.com/rescript-lang/rescript-vscode/pull/805
+- Fix JS syntax highlighting in single-line FFI extension points. https://github.com/rescript-lang/rescript-vscode/pull/807
+- Fix signature help in uncurried mode. https://github.com/rescript-lang/rescript-vscode/pull/809
+- Fix various issues in uncurried mode. https://github.com/rescript-lang/rescript-vscode/pull/810
+- Fixes a bug in pattern completion where for example `result` wouldn't complete, due to type variables getting lost/not being instantiated. https://github.com/rescript-lang/rescript-vscode/pull/814
+- Fix bug where pipes would not be considered in certain cases when completing for single unlabelled function arguments. https://github.com/rescript-lang/rescript-vscode/pull/818
 
 ## 1.18.0
 

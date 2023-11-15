@@ -2,9 +2,9 @@
 	"name": "rescript-vscode",
 	"displayName": "ReScript",
 	"description": "ReScript language support (official)",
-	"author": "chenglou",
+	"author": "ReScript Team",
 	"license": "MIT",
-	"version": "1.18.0",
+	"version": "1.26.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/rescript-lang/rescript-vscode"
@@ -40,7 +40,7 @@
 		],
 		"jsonValidation": [
 			{
-				"fileMatch": "bsconfig.json",
+				"fileMatch": ["bsconfig.json", "rescript.json"],
 				"url": "https://raw.githubusercontent.com/rescript-lang/rescript-compiler/master/docs/docson/build-schema.json"
 			}
 		],

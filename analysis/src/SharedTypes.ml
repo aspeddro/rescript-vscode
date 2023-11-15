@@ -122,13 +122,19 @@ module Module = struct
     | Type of Type.t * Types.rec_status
     | Module of t
 
-  and item = {kind: kind; name: string}
+  and item = {
+    kind: kind;
+    name: string;
+    docstring: string list;
+    deprecated: string option;
+  }
 
   and structure = {
     name: string;
     docstring: string list;
     exported: Exported.t;
     items: item list;
+    deprecated: string option
   }
 
   and t = Ident of Path.t | Structure of structure | Constraint of t * t
@@ -253,6 +259,7 @@ module File = struct
           docstring = [];
           exported = Exported.init ();
           items = [];
+          deprecated = None
         };
     }
 end
@@ -310,6 +317,7 @@ type innerType = TypeExpr of Types.type_expr | ExtractedType of completionType
 and completionType =
   | Tuple of QueryEnv.t * Types.type_expr list * Types.type_expr
   | Texn of QueryEnv.t
+  | Tpromise of QueryEnv.t * Types.type_expr
   | Toption of QueryEnv.t * innerType
   | Tbool of QueryEnv.t
   | Tarray of QueryEnv.t * innerType
@@ -319,6 +327,8 @@ and completionType =
       constructors: Constructor.t list;
       variantDecl: Types.type_declaration;
       variantName: string;
+      typeArgs: Types.type_expr list;
+      typeParams: Types.type_expr list;
     }
   | Tpolyvariant of {
       env: QueryEnv.t;
@@ -340,6 +350,7 @@ and completionType =
       args: typedFnArg list;
       typ: Types.type_expr;
       uncurried: bool;
+      returnType: Types.type_expr;
     }
 
 module Env = struct
@@ -578,6 +589,7 @@ module Completable = struct
     | CPId of string list * completionContext
     | CPField of contextPath * string
     | CPObj of contextPath * string
+    | CPAwait of contextPath
     | CPPipe of {
         contextPath: contextPath;
         id: string;
@@ -592,6 +604,8 @@ module Completable = struct
       }
     | CJsxPropValue of {pathToComponent: string list; propName: string}
     | CPatternPath of {rootCtxPath: contextPath; nested: nestedPath list}
+    | CTypeAtPos of Location.t
+        (** A position holding something that might have a *compiled* type. *)
 
   type patternMode = Default | Destructuring
 
@@ -629,6 +643,7 @@ module Completable = struct
     | CPInt -> "int"
     | CPFloat -> "float"
     | CPBool -> "bool"
+    | CPAwait ctxPath -> "await " ^ contextPathToString ctxPath
     | CPOption ctxPath -> "option<" ^ contextPathToString ctxPath ^ ">"
     | CPApply (cp, labels) ->
       contextPathToString cp ^ "("
@@ -671,6 +686,7 @@ module Completable = struct
       ^ (nested
         |> List.map (fun nestedPath -> nestedPathToString nestedPath)
         |> String.concat "->")
+    | CTypeAtPos _loc -> "CTypeAtPos()"
 
   let toString = function
     | Cpath cp -> "Cpath " ^ contextPathToString cp

@@ -115,6 +115,8 @@ let rec extractType ~env ~package (t : Types.type_expr) =
   | Tlink t1 | Tsubst t1 | Tpoly (t1, []) -> extractType ~env ~package t1
   | Tconstr (Path.Pident {name = "option"}, [payloadTypeExpr], _) ->
     Some (Toption (env, TypeExpr payloadTypeExpr))
+  | Tconstr (Path.Pident {name = "promise"}, [payloadTypeExpr], _) ->
+    Some (Tpromise (env, payloadTypeExpr))
   | Tconstr (Path.Pident {name = "array"}, [payloadTypeExpr], _) ->
     Some (Tarray (env, TypeExpr payloadTypeExpr))
   | Tconstr (Path.Pident {name = "bool"}, [], _) -> Some (Tbool env)
@@ -123,17 +125,26 @@ let rec extractType ~env ~package (t : Types.type_expr) =
   | Tconstr (Pident {name = "function$"}, [t; _], _) -> (
     (* Uncurried functions. *)
     match extractFunctionType t ~env ~package with
-    | args, _tRet when args <> [] ->
-      Some (Tfunction {env; args; typ = t; uncurried = true})
+    | args, tRet when args <> [] ->
+      Some (Tfunction {env; args; typ = t; uncurried = true; returnType = tRet})
     | _args, _tRet -> None)
-  | Tconstr (path, _, _) -> (
+  | Tconstr (path, typeArgs, _) -> (
     match References.digConstructor ~env ~package path with
-    | Some (env, {item = {decl = {type_manifest = Some t1}}}) ->
-      extractType ~env ~package t1
-    | Some (env, {name; item = {decl; kind = Type.Variant constructors}}) ->
+    | Some (_env, {item = {decl = {type_manifest = Some t1; type_params}}}) ->
+      t1
+      |> instantiateType ~typeParams:type_params ~typeArgs
+      |> extractType ~env ~package
+    | Some (_env, {name; item = {decl; kind = Type.Variant constructors}}) ->
       Some
         (Tvariant
-           {env; constructors; variantName = name.txt; variantDecl = decl})
+           {
+             env;
+             constructors;
+             variantName = name.txt;
+             variantDecl = decl;
+             typeArgs;
+             typeParams = decl.type_params;
+           })
     | Some (env, {item = {kind = Record fields}}) ->
       Some (Trecord {env; fields; definition = `TypeExpr t})
     | _ -> None)
@@ -157,8 +168,9 @@ let rec extractType ~env ~package (t : Types.type_expr) =
     Some (Tpolyvariant {env; constructors; typeExpr = t})
   | Tarrow _ -> (
     match extractFunctionType t ~env ~package with
-    | args, _tRet when args <> [] ->
-      Some (Tfunction {env; args; typ = t; uncurried = false})
+    | args, tRet when args <> [] ->
+      Some
+        (Tfunction {env; args; typ = t; uncurried = false; returnType = tRet})
     | _args, _tRet -> None)
   | _ -> None
 
@@ -198,12 +210,14 @@ let getBuiltinFromTypePath path =
   | Path.Pident id when Ident.name id = "result" -> Some Result
   | Path.Pident id when Ident.name id = "lazy_t" -> Some Lazy
   | Path.Pident id when Ident.name id = "char" -> Some Char
-  | Pdot (Pident id, "result", _) when Ident.name id = "Pervasives" ->
+  | Pdot (Pident id, "result", _)
+    when Ident.name id = "Pervasives" || Ident.name id = "PervasivesU" ->
     Some Result
   | _ -> None
 
-let pathFromTypeExpr (t : Types.type_expr) =
+let rec pathFromTypeExpr (t : Types.type_expr) =
   match t.desc with
+  | Tconstr (Pident {name = "function$"}, [t; _], _) -> pathFromTypeExpr t
   | Tconstr (path, _typeArgs, _)
   | Tlink {desc = Tconstr (path, _typeArgs, _)}
   | Tsubst {desc = Tconstr (path, _typeArgs, _)}
@@ -276,7 +290,14 @@ let extractTypeFromResolvedType (typ : Type.t) ~env ~full =
   | Variant constructors ->
     Some
       (Tvariant
-         {env; constructors; variantName = typ.name; variantDecl = typ.decl})
+         {
+           env;
+           constructors;
+           variantName = typ.name;
+           variantDecl = typ.decl;
+           typeParams = typ.decl.type_params;
+           typeArgs = [];
+         })
   | Abstract _ | Open -> (
     match typ.decl.type_manifest with
     | None -> None
@@ -341,8 +362,8 @@ let rec resolveNested ~env ~full ~nested ?ctx (typ : completionType) =
       typ
       |> extractType ~env ~package:full.package
       |> Utils.Option.flatMap (fun t -> t |> resolveNested ~env ~full ~nested)
-    | NVariantPayload {constructorName; itemNum}, Tvariant {env; constructors}
-      -> (
+    | ( NVariantPayload {constructorName; itemNum},
+        Tvariant {env; constructors; typeParams; typeArgs} ) -> (
       match
         constructors
         |> List.find_opt (fun (c : Constructor.t) ->
@@ -353,6 +374,7 @@ let rec resolveNested ~env ~full ~nested ?ctx (typ : completionType) =
         | None -> None
         | Some (typ, _) ->
           typ
+          |> instantiateType ~typeParams ~typeArgs
           |> extractType ~env ~package:full.package
           |> Utils.Option.flatMap (fun typ ->
                  typ |> resolveNested ~env ~full ~nested))
@@ -513,7 +535,10 @@ let getArgs ~env (t : Types.type_expr) ~full =
   let rec getArgsLoop ~env (t : Types.type_expr) ~full ~currentArgumentPosition
       =
     match t.desc with
-    | Tlink t1 | Tsubst t1 | Tpoly (t1, []) ->
+    | Tlink t1
+    | Tsubst t1
+    | Tpoly (t1, [])
+    | Tconstr (Pident {name = "function$"}, [t1; _], _) ->
       getArgsLoop ~full ~env ~currentArgumentPosition t1
     | Tarrow (Labelled l, tArg, tRet, _) ->
       (SharedTypes.Completable.Labelled l, tArg)
@@ -590,6 +615,7 @@ let rec extractedTypeToString ?(inner = false) = function
     "option<" ^ Shared.typeToString innerTyp ^ ">"
   | Toption (_, ExtractedType innerTyp) ->
     "option<" ^ extractedTypeToString ~inner:true innerTyp ^ ">"
+  | Tpromise (_, innerTyp) -> "promise<" ^ Shared.typeToString innerTyp ^ ">"
   | Tvariant {variantDecl; variantName} ->
     if inner then variantName else Shared.declToString variantName variantDecl
   | Trecord {definition = `NameOnly name; fields} ->
@@ -601,3 +627,77 @@ let unwrapCompletionTypeIfOption (t : SharedTypes.completionType) =
   match t with
   | Toption (_, ExtractedType unwrapped) -> unwrapped
   | _ -> t
+
+module Codegen = struct
+  let mkFailWithExp () =
+    Ast_helper.Exp.apply
+      (Ast_helper.Exp.ident {txt = Lident "failwith"; loc = Location.none})
+      [(Nolabel, Ast_helper.Exp.constant (Pconst_string ("TODO", None)))]
+
+  let mkConstructPat ?payload name =
+    Ast_helper.Pat.construct
+      {Asttypes.txt = Longident.Lident name; loc = Location.none}
+      payload
+
+  let mkTagPat ?payload name = Ast_helper.Pat.variant name payload
+
+  let any () = Ast_helper.Pat.any ()
+
+  let rec extractedTypeToExhaustivePatterns ~env ~full extractedType =
+    match extractedType with
+    | Tvariant v ->
+      Some
+        (v.constructors
+        |> List.map (fun (c : SharedTypes.Constructor.t) ->
+               mkConstructPat
+                 ?payload:
+                   (match c.args with
+                   | Args [] -> None
+                   | _ -> Some (any ()))
+                 c.cname.txt))
+    | Tpolyvariant v ->
+      Some
+        (v.constructors
+        |> List.map (fun (c : SharedTypes.polyVariantConstructor) ->
+               mkTagPat
+                 ?payload:
+                   (match c.args with
+                   | [] -> None
+                   | _ -> Some (any ()))
+                 c.name))
+    | Toption (_, innerType) ->
+      let extractedType =
+        match innerType with
+        | ExtractedType t -> Some t
+        | TypeExpr t -> extractType t ~env ~package:full.package
+      in
+      let expandedBranches =
+        match extractedType with
+        | None -> []
+        | Some extractedType -> (
+          match extractedTypeToExhaustivePatterns ~env ~full extractedType with
+          | None -> []
+          | Some patterns -> patterns)
+      in
+      Some
+        ([
+           mkConstructPat "None";
+           mkConstructPat ~payload:(Ast_helper.Pat.any ()) "Some";
+         ]
+        @ (expandedBranches
+          |> List.map (fun (pat : Parsetree.pattern) ->
+                 mkConstructPat ~payload:pat "Some")))
+    | Tbool _ -> Some [mkConstructPat "true"; mkConstructPat "false"]
+    | _ -> None
+
+  let extractedTypeToExhaustiveCases ~env ~full extractedType =
+    let patterns = extractedTypeToExhaustivePatterns ~env ~full extractedType in
+
+    match patterns with
+    | None -> None
+    | Some patterns ->
+      Some
+        (patterns
+        |> List.map (fun (pat : Parsetree.pattern) ->
+               Ast_helper.Exp.case pat (mkFailWithExp ())))
+end
