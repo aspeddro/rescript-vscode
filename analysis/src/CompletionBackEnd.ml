@@ -502,7 +502,7 @@ let getComplementaryCompletionsForTypedValue ~opens ~allFiles ~scope ~env prefix
              Utils.checkName name ~prefix ~exact
              && not
                   (* TODO complete the namespaced name too *)
-                  (String.contains name '-')
+                  (Utils.fileNameHasUnallowedChars name)
            then
              Some
                (Completion.create name ~env ~kind:(Completion.FileModule name))
@@ -528,7 +528,7 @@ let getCompletionsForPath ~debug ~package ~opens ~full ~pos ~exact ~scope
                Utils.checkName name ~prefix ~exact
                && not
                     (* TODO complete the namespaced name too *)
-                    (String.contains name '-')
+                    (Utils.fileNameHasUnallowedChars name)
              then
                Some
                  (Completion.create name ~env ~kind:(Completion.FileModule name))
@@ -735,6 +735,16 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env ~exact
           ~kind:
             (Completion.ExtractedType (Toption (env, ExtractedType typ), `Type));
       ])
+  | CPAwait cp -> (
+    match
+      cp
+      |> getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env
+           ~exact:true ~scope
+      |> completionsGetCompletionType ~full
+    with
+    | Some (Tpromise (env, typ), _env) ->
+      [Completion.create "dummy" ~env ~kind:(Completion.Value typ)]
+    | _ -> [])
   | CPId (path, completionContext) ->
     path
     |> getCompletionsForPath ~debug ~package ~opens ~full ~pos ~exact
@@ -945,7 +955,7 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env ~exact
           | [] -> modulePath
         in
         let completionPathMinusOpens =
-          completionPath
+          completionPath |> Utils.flattenAnyNamespaceInPath
           |> removeRawOpens package.opens
           |> removeRawOpens rawOpens |> String.concat "."
         in
@@ -1113,6 +1123,14 @@ and getCompletionsForContextPath ~debug ~full ~opens ~rawOpens ~pos ~env ~exact
         [Completion.create "dummy" ~env ~kind:(kindFromInnerType typ)]
       | None -> [])
     | None -> [])
+  | CTypeAtPos loc -> (
+    match
+      References.getLocItem ~full ~pos:(Pos.ofLexing loc.loc_start) ~debug
+    with
+    | None -> []
+    | Some {locType = Typed (_, typExpr, _)} ->
+      [Completion.create "dummy" ~env ~kind:(Value typExpr)]
+    | _ -> [])
 
 let getOpens ~debug ~rawOpens ~package ~env =
   if debug && rawOpens <> [] then
@@ -1125,9 +1143,16 @@ let getOpens ~debug ~rawOpens ~package ~env =
   if debug && packageOpens <> [] then
     Printf.printf "%s\n"
       ("Package opens "
-      ^ String.concat " " (packageOpens |> List.map pathToString));
+      ^ String.concat " "
+          (packageOpens
+          |> List.map (fun p ->
+                 p
+                 |> List.map (fun name ->
+                        (* Unify formatting between curried and uncurried *)
+                        if name = "PervasivesU" then "Pervasives" else name)
+                 |> pathToString)));
   let resolvedOpens =
-    resolveOpens ~env (List.rev (packageOpens @ rawOpens)) ~package
+    resolveOpens ~env (List.rev (rawOpens @ packageOpens)) ~package
   in
   if debug && resolvedOpens <> [] then
     Printf.printf "%s\n"
@@ -1139,8 +1164,11 @@ let getOpens ~debug ~rawOpens ~package ~env =
           |> List.map (fun (e : QueryEnv.t) ->
                  let name = Uri.toString e.file.uri in
 
-                 if Utils.startsWith name "pervasives." then
-                   Filename.chop_extension name
+                 (* Unify formatting between curried and uncurried *)
+                 if
+                   name = "pervasives.res" || name = "pervasives.resi"
+                   || name = "pervasivesU.res" || name = "pervasivesU.resi"
+                 then "pervasives"
                  else name)));
   (* Last open takes priority *)
   List.rev resolvedOpens
@@ -1354,8 +1382,8 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
           ~env ();
       ]
     else []
-  | Tfunction {env; typ; args; uncurried} when prefix = "" && mode = Expression
-    ->
+  | Tfunction {env; typ; args; uncurried; returnType}
+    when prefix = "" && mode = Expression ->
     let shouldPrintAsUncurried = uncurried && !Config.uncurried <> Uncurried in
     let mkFnArgs ~asSnippet =
       match args with
@@ -1391,11 +1419,18 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
         in
         "(" ^ if shouldPrintAsUncurried then ". " else "" ^ argsText ^ ")"
     in
+    let isAsync =
+      match TypeUtils.extractType ~env ~package:full.package returnType with
+      | Some (Tpromise _) -> true
+      | _ -> false
+    in
+    let asyncPrefix = if isAsync then "async " else "" in
     [
       Completion.createWithSnippet
-        ~name:(mkFnArgs ~asSnippet:false ^ " => {}")
+        ~name:(asyncPrefix ^ mkFnArgs ~asSnippet:false ^ " => {}")
         ~insertText:
-          (mkFnArgs ~asSnippet:!Cfg.supportsSnippets
+          (asyncPrefix
+          ^ mkFnArgs ~asSnippet:!Cfg.supportsSnippets
           ^ " => "
           ^ if !Cfg.supportsSnippets then "{$0}" else "{}")
         ~sortText:"A" ~kind:(Value typ) ~env ();
@@ -1415,6 +1450,7 @@ let rec completeTypedValue ~full ~prefix ~completionContext ~mode
           ]
         ~env;
     ]
+  | Tpromise _ -> []
 
 let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
   if debug then
@@ -1475,7 +1511,16 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
     let mkDecorator (name, docstring) =
       {(Completion.create name ~kind:(Label "") ~env) with docstring}
     in
-    CompletionDecorators.decorators
+    let isTopLevel = String.starts_with ~prefix:"@" prefix in
+    let prefix =
+      if isTopLevel then String.sub prefix 1 (String.length prefix - 1)
+      else prefix
+    in
+    let decorators =
+      if isTopLevel then CompletionDecorators.toplevel
+      else CompletionDecorators.local
+    in
+    decorators
     |> List.filter (fun (decorator, _) -> Utils.startsWith decorator prefix)
     |> List.map (fun (decorator, doc) ->
            let parts = String.split_on_char '.' prefix in
@@ -1663,7 +1708,7 @@ let rec processCompletable ~debug ~full ~scope ~env ~pos ~forHover completable =
                  ~cases:
                    (v.constructors
                    |> List.map (fun (constructor : polyVariantConstructor) ->
-                          "| #" ^ constructor.name
+                          "#" ^ constructor.name
                           ^
                           match constructor.args with
                           | [] -> ""

@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ master ]
 
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -53,9 +57,9 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 16
+        registry-url: 'https://registry.npmjs.org'
 
     - run: npm ci
-    - run: opam install dune cppo
     - run: npm run compile
 
     # These 2 runs (or just the second?) are for when you have opam dependencies. We don't.
@@ -63,9 +67,11 @@ jobs:
     # - run: opam pin add rescript-editor-analysis.dev . --no-action
     # - run: opam install . --deps-only --with-doc --with-test
 
+    - name: Install opam deps
+      run: opam install . --deps-only
+
     - name: Build and test
       run: opam exec -- make test
-      working-directory: analysis
 
     # Also avoids artifacts upload permission loss:
     # https://github.com/actions/upload-artifact/tree/ee69f02b3dfdecd58bb31b4d133da38ba6fe3700#permission-loss
@@ -92,6 +98,7 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 16
+        registry-url: 'https://registry.npmjs.org'
 
     - run: npm ci
     - run: npm run compile
@@ -201,9 +208,32 @@ jobs:
         files: rescript-vscode-${{ steps.tag_name.outputs.tag }}.vsix
 
     - name: Publish extension as pre-release
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && !startsWith(github.event.head_commit.message, 'publish tools')
       run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --pre-release ${{ steps.increment_pre_release.outputs.new_version }} --no-git-tag-version
 
     - name: Publish extension as release
       if: startsWith(github.ref, 'refs/tags/')
       run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} ${{ steps.tag_name.outputs.tag }} --no-git-tag-version
+
+    - name: Publish LSP to NPM
+      if: startsWith(github.ref, 'refs/tags/')
+      working-directory: server
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: Copy analysis binaries to tools folder
+      run: cp -r server/analysis_binaries/* tools/analysis_binaries
+
+    - name: Build @rescript/tools package
+      working-directory: tools
+      run: |
+        npm ci
+        npm run build
+
+    - name: Publish @rescript/tools package
+      if: ${{ startsWith(github.event.head_commit.message, 'publish tools') && (github.ref == 'refs/heads/master') }}
+      working-directory: tools
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -16,7 +16,8 @@ import {
   LanguageClientOptions,
   ServerOptions,
   State,
-  TransportKind,
+  Executable,
+  TransportKind
 } from "vscode-languageclient/node";
 
 import * as customCommands from "./commands";
@@ -81,7 +82,7 @@ export function activate(context: ExtensionContext) {
   function createLanguageClient() {
     // The server is implemented in node
     let serverModule = context.asAbsolutePath(
-      path.join("server", "out", "server.js")
+      path.join("server", "out", "cli.js")
     );
     // The debug options for the server
     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
@@ -92,11 +93,12 @@ export function activate(context: ExtensionContext) {
     let command = "/home/pedro/Desktop/projects/rescript-vscode/_build/default/rescript-language-server/bin/main.exe"
     // let command = "/home/pedro/Desktop/projects/rescript-vscode/_build/install/default/bin/rescriptlsp"
     let serverOptions: ServerOptions = {
-      run: { command },
+      run: { module: serverModule, args: ["--node-ipc"], transport: TransportKind.ipc },
       debug: {
-        command
-        // transport: TransportKind.stdio,
-        // options: debugOptions,
+        module: serverModule,
+        args: ["--node-ipc"],
+        transport: TransportKind.ipc,
+        options: debugOptions,
       },
     };
 
@@ -205,6 +207,7 @@ export function activate(context: ExtensionContext) {
   commands.registerCommand("rescript-vscode.open_compiled", () => {
     customCommands.openCompiled(client);
   });
+
 
   commands.registerCommand(
     "rescript-vscode.go_to_location",

@@ -400,20 +400,22 @@ let getOpenedFileContent = (fileUri: string) => {
   return content;
 };
 
-// Start listening now!
-// We support two modes: the regular node RPC mode for VSCode, and the --stdio
-// mode for other editors The latter is _technically unsupported_. It's an
-// implementation detail that might change at any time
-if (process.argv.includes("--stdio")) {
-  let writer = new rpc.StreamMessageWriter(process.stdout);
-  let reader = new rpc.StreamMessageReader(process.stdin);
-  // proper `this` scope for writer
-  send = (msg: p.Message) => writer.write(msg);
-  reader.listen(onMessage);
-} else {
-  // proper `this` scope for process
-  send = (msg: p.Message) => process.send!(msg);
-  process.on("message", onMessage);
+export default function listen(useStdio = false) {
+  // Start listening now!
+  // We support two modes: the regular node RPC mode for VSCode, and the --stdio
+  // mode for other editors The latter is _technically unsupported_. It's an
+  // implementation detail that might change at any time
+  if (useStdio) {
+    let writer = new rpc.StreamMessageWriter(process.stdout);
+    let reader = new rpc.StreamMessageReader(process.stdin);
+    // proper `this` scope for writer
+    send = (msg: p.Message) => writer.write(msg);
+    reader.listen(onMessage);
+  } else {
+    // proper `this` scope for process
+    send = (msg: p.Message) => process.send!(msg);
+    process.on("message", onMessage);
+  }
 }
 
 function hover(msg: p.RequestMessage) {
@@ -714,6 +716,8 @@ function codeAction(msg: p.RequestMessage): p.ResponseMessage {
       filePath,
       params.range.start.line,
       params.range.start.character,
+      params.range.end.line,
+      params.range.end.character,
       tmpname,
     ],
     msg
@@ -891,12 +895,12 @@ function createInterface(msg: p.RequestMessage): p.Message {
   let resPartialPath = filePath.split(projDir)[1];
 
   // The .cmi filename may have a namespace suffix appended.
-  let namespaceResult = utils.getNamespaceNameFromBsConfig(projDir);
+  let namespaceResult = utils.getNamespaceNameFromConfigFile(projDir);
 
   if (namespaceResult.kind === "error") {
     let params: p.ShowMessageParams = {
       type: p.MessageType.Error,
-      message: `Error reading bsconfig file.`,
+      message: `Error reading ReScript config file.`,
     };
 
     let response: p.NotificationMessage = {

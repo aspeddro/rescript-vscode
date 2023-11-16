@@ -16,7 +16,8 @@ Thanks for your interest. Below is an informal spec of how the plugin's server c
 ├── package.json // The extension manifest
 └── server // Language Server. Usable standalone
     ├── src
-    │   └── server.ts // Language Server entry point
+    │   ├── server.ts // Language Server Module
+    │   ├── cli.ts // LSP CLI
     └── analysis_binaries // Prod-time platform-specific analysis binaries
         ├── darwin
         ├── linux
@@ -35,6 +36,9 @@ This is needed for the `analysis` folder, which is native code.
 # If you haven't created the switch, do it. OPAM(https://opam.ocaml.org)
 opam switch create . --deps-only
 
+# Install dev dependencies from OPAM
+opam install . --deps-only
+
 # For IDE support, install the OCaml language server
 opam install ocaml-lsp-server
 ```
@@ -42,7 +46,7 @@ opam install ocaml-lsp-server
 ## Build & Run
 
 - `npm run compile`. You don't need this if you're developing this repo in VSCode. The compilation happens automatically in the background.
-- `cd analysis && make`.
+- `make`.
 
 ## Test
 
@@ -189,7 +193,9 @@ Analysis bin is what we currently call the OCaml code that does deeper language 
 
 We're happy to gather more resources over time here, including more in-depth getting started guides.
 
-## Release
+## Releasing the VSCode extension and standalone LSP package
+
+_This below will automatically release the LSP package as well._
 
 1. Bump the version to an _even minor_ version number in `package.json` and `server/package.json` and their lockfiles. It's very important that it's an even minor like `1.8.0`, and not `1.7.0`. This is because even minors are reserved for actual releases, and uneven minors for pre-releases. Commit and push the version bump.
 2. Make sure @ryyppy is aware of your changes. He needs to sync them over to the vim plugin.
@@ -205,4 +211,8 @@ If that somehow does not work, you can do the above steps manually:
 2. Go to the appropriate [VSCode Marketplace Publisher](https://marketplace.visualstudio.com/manage/publishers/chenglou92), select the three dots next to the extension name, and choose `Update`. Upload your `.vsix` there.
 3. Not done! Make a new manual release [here](https://github.com/rescript-lang/rescript-vscode/releases), and make sure you attach the generated `.vsix` onto that new release as well. This is for folks who don't use the VSCode marketplace.
 
-For beta releases, ask folks to try the `.vsix` from CI directly.
+For beta releases, ask folks to use the pre-release version installable from the VSCode Marketplace.
+
+## Releasing the `@rescript/tools` package
+
+The tools package is released by bumping the version in `tools/package.json`, running `npm i` in the `tools/` folder, and then pushing those changes with the commit message `publish tools`.
