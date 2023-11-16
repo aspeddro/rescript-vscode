@@ -46,7 +46,7 @@ opam install ocaml-lsp-server
 ## Build & Run
 
 - `npm run compile`. You don't need this if you're developing this repo in VSCode. The compilation happens automatically in the background.
-- `cd analysis && make`.
+- `make`.
 
 ## Test
 

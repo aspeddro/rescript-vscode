@@ -6,15 +6,14 @@ authors: ["Cristiano Calcagno"]
 homepage: "https://github.com/rescript-lang/rescript-vscode"
 bug-reports: "https://github.com/rescript-lang/rescript-vscode/issues"
 depends: [
-  "dune" {>= "3.0"}
+  "dune" {>= "2.3"}
   "ocaml" {>= "4.10"}
   "ocamlformat" {= "0.22.4"}
   "cppo" {= "1.6.9"}
   "reanalyze" {= "2.23.0"}
-  "odoc" {with-doc}
 ]
 build: [
-  ["dune" "subst"] {dev}
+  ["dune" "subst"] {pinned}
   [
     "dune"
     "build"

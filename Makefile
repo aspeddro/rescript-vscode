@@ -1,8 +1,5 @@
 SHELL = /bin/bash
 
-# build:
-# 	make -C analysis build
-
 build-analysis-binary:
 	rm -f analysis/rescript-editor-analysis.exe
 	dune build
@@ -16,12 +13,11 @@ build: build-analysis-binary build-tests
 dce: build-analysis-binary
 	opam exec reanalyze.exe -- -dce-cmt _build -suppress vendor
 
-# clean:
-# 	make -C analysis clean
-
 clean:
 	rm -f analysis/rescript-editor-analysis.exe
 	dune clean
+	make -C analysis/tests clean
+	make -C analysis/reanalyze clean
 
 test-analysis-binary: build-analysis-binary
 	make -C analysis/tests test
@@ -31,17 +27,8 @@ test-reanalyze: build-analysis-binary
 
 test: test-analysis-binary test-reanalyze
 
-# test:
-# 	make -C analysis test
-
 format:
 	dune build @fmt --auto-promote
-
-# format:
-# 	make -C analysis format
-
-# checkformat:
-# 	make -C analysis checkformat
 
 checkformat:
 	dune build @fmt
