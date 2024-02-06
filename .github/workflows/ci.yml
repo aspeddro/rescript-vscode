@@ -76,10 +76,8 @@ jobs:
     - name: Build
       run: opam exec -- make
 
-    - name: Change Dir
-      run: cd analysis/tests
-
-    - name: Test
+    - name: Debug
+      working-directory: analysis/tests
       run: ../../rescript-editor-analysis.exe debug-dump verbose definition src/Debug.res 5 14
 
     # Also avoids artifacts upload permission loss:
