@@ -100,6 +100,7 @@ let main () =
   in
   Debug.debugLevel := debugLevel;
   let debug = debugLevel <> Debug.Off in
+  Log.verbose := debug;
   let printHeaderInfo path line col =
     if debug then
       Printf.printf "Debug level: %s\n%s:%s-%s\n\n"
