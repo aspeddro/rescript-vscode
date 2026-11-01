@@ -221,7 +221,7 @@ export function activate(context: ExtensionContext) {
   }
 
   function createClient() {
-    return useExperimentalServer != null
+    return useExperimentalServer
       ? createExperimentalLanguageClient()
       : createLanguageClient();
   }
