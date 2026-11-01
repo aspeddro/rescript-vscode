@@ -18,6 +18,8 @@
 
 #### :rocket: New Feature
 
+- Add opt-in support for the experimental ReScript language server (OCaml implementation) while keeping the existing stable Node.js server. https://github.com/rescript-lang/rescript-vscode/pull/1183
+
 #### :house: Internal
 
 ## 1.74.0
